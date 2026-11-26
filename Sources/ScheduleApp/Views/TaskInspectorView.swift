@@ -30,11 +30,11 @@ struct TaskInspectorView: View {
                     ))
 
                     HStack(spacing: 6) {
-                        TextField("DRI (Optional)", text: Binding(
+                        TextField("Owner (Optional)", text: Binding(
                             get: { task.dri ?? "" },
                             set: { newVal in
                                 let trimmed = newVal.trimmingCharacters(in: .whitespacesAndNewlines)
-                                viewModel.updateTask(task.id, actionName: "Assign DRI") { t, _ in
+                                viewModel.updateTask(task.id, actionName: "Assign Owner") { t, _ in
                                     t.dri = trimmed.isEmpty ? nil : newVal
                                 }
                             }
@@ -43,15 +43,15 @@ struct TaskInspectorView: View {
                             Menu {
                                 ForEach(viewModel.knownDRIs, id: \.self) { name in
                                     Button(name) {
-                                        viewModel.updateTask(task.id, actionName: "Assign DRI") { t, _ in
+                                        viewModel.updateTask(task.id, actionName: "Assign Owner") { t, _ in
                                             t.dri = name
                                         }
                                     }
                                 }
                                 if !(task.dri ?? "").isEmpty {
                                     if !viewModel.knownDRIs.isEmpty { Divider() }
-                                    Button("Clear DRI", role: .destructive) {
-                                        viewModel.updateTask(task.id, actionName: "Clear DRI") { t, _ in
+                                    Button("Clear Owner", role: .destructive) {
+                                        viewModel.updateTask(task.id, actionName: "Clear Owner") { t, _ in
                                             t.dri = nil
                                         }
                                     }
@@ -62,7 +62,7 @@ struct TaskInspectorView: View {
                             }
                             .menuStyle(.borderlessButton)
                             .fixedSize()
-                            .help("Choose an existing DRI")
+                            .help("Choose an existing owner")
                         }
                     }
 

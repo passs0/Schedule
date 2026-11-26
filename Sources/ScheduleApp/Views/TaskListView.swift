@@ -157,7 +157,7 @@ struct TaskListView: View {
                     .frame(width: 118, alignment: .leading)
                     .padding(.horizontal, 8)
                 Divider().frame(height: 14)
-                Text("DRI")
+                Text("Owner")
                     .frame(width: 96, alignment: .leading)
                     .padding(.horizontal, 8)
             }
@@ -671,7 +671,7 @@ struct TaskListView: View {
                     knownDRIs: viewModel.knownDRIs,
                     onSave: { newDRI in
                         let trimmed = newDRI.trimmingCharacters(in: .whitespacesAndNewlines)
-                        viewModel.updateTask(task.id, actionName: trimmed.isEmpty ? "Clear DRI" : "Assign DRI") { t, _ in
+                        viewModel.updateTask(task.id, actionName: trimmed.isEmpty ? "Clear Owner" : "Assign Owner") { t, _ in
                             t.dri = trimmed.isEmpty ? nil : trimmed
                         }
                         activePopover = nil
@@ -769,7 +769,7 @@ private struct DRIPopoverView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Assign DRI")
+            Text("Assign Owner")
                 .font(.callout.weight(.semibold))
 
             HStack(spacing: 6) {
@@ -815,7 +815,7 @@ private struct DRIPopoverView: View {
 
             if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Divider()
-                Button("Clear DRI", role: .destructive) {
+                Button("Clear Owner", role: .destructive) {
                     onSave("")
                 }
                 .controlSize(.small)
