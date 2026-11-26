@@ -24,8 +24,29 @@ struct MainWindowView: View {
     }
 
     var body: some View {
-        splitViewContent
-            .onAppear {
+        Group {
+            if let vm = viewModel {
+                splitViewContent(vm: vm)
+                    .frame(minWidth: 960, minHeight: 600)
+            } else {
+                WelcomeView(
+                    recentProjects: store.recentProjects,
+                    onOpenProject: { id in
+                        store.selectProject(id)
+                        syncViewModel()
+                    },
+                    onOpenFile: {
+                        handleImport()
+                    },
+                    onNewDocument: {
+                        showingTemplateChooser = true
+                    }
+                )
+                .frame(width: 580, height: 420)
+            }
+        }
+        .background(WindowSizeController(isWorkspaceOpen: viewModel != nil))
+        .onAppear {
                 syncViewModel()
             }
             .onChange(of: store.selectedProjectID) { _, _ in
@@ -94,11 +115,11 @@ struct MainWindowView: View {
     }
 
     @ViewBuilder
-    private var splitViewContent: some View {
+    private func splitViewContent(vm: ProjectViewModel) -> some View {
         NavigationSplitView {
             SidebarView(
                 store: store,
-                viewModel: viewModel,
+                viewModel: vm,
                 onNewProject: {
                     showingTemplateChooser = true
                 },
@@ -106,28 +127,12 @@ struct MainWindowView: View {
                     showingSnapshotSheet = true
                 },
                 onCompareVersion: { _ in
-                    viewModel?.isComparingVersions = true
+                    vm.isComparingVersions = true
                 }
             )
             .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 290)
         } detail: {
-            if let vm = viewModel {
-                detailContent(vm: vm)
-            } else {
-                WelcomeView(
-                    recentProjects: store.recentProjects,
-                    onOpenProject: { id in
-                        store.selectProject(id)
-                        syncViewModel()
-                    },
-                    onOpenFile: {
-                        handleImport()
-                    },
-                    onNewDocument: {
-                        showingTemplateChooser = true
-                    }
-                )
-            }
+            detailContent(vm: vm)
         }
     }
 
@@ -434,6 +439,46 @@ extension Notification.Name {
 
 private struct IdentifiableUUID: Identifiable {
     let id: UUID
+}
+
+private struct WindowSizeController: NSViewRepresentable {
+    let isWorkspaceOpen: Bool
+
+    final class Coordinator {
+        var lastState: Bool?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard context.coordinator.lastState != isWorkspaceOpen else { return }
+        context.coordinator.lastState = isWorkspaceOpen
+        let open = isWorkspaceOpen
+
+        DispatchQueue.main.async {
+            guard let window = nsView.window else { return }
+            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            if open {
+                window.minSize = NSSize(width: 960, height: 600)
+                let targetW = min(1220, visible.width - 40)
+                let targetH = min(760, visible.height - 40)
+                let x = visible.midX - targetW / 2
+                let y = visible.midY - targetH / 2
+                window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: true)
+            } else {
+                window.minSize = NSSize(width: 580, height: 420)
+                let targetW: CGFloat = 580
+                let targetH: CGFloat = 420
+                let x = visible.midX - targetW / 2
+                let y = visible.midY - targetH / 2
+                window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: false)
+            }
+        }
+    }
 }
 
 private struct MenuNotificationModifier: ViewModifier {
