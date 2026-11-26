@@ -56,25 +56,14 @@ public final class WorkspaceStore {
             }
         }
 
-        if loaded.isEmpty {
-            let sample = ProjectDocument.sampleProject()
-            loaded = [sample]
-            saveToDisk(sample)
-        }
-
         projects = loaded.sorted { $0.modifiedAt > $1.modifiedAt }
 
         if let metaData = try? Data(contentsOf: metadataURL),
            let meta = try? JSONDecoder().decode(StoreMetadata.self, from: metaData) {
             recentProjectIDs = meta.recentIDs
-            if let lastID = meta.lastSelectedID, projects.contains(where: { $0.id == lastID }) {
-                selectedProjectIDsUpdate(lastID)
-                return
-            }
         }
-        if let first = projects.first {
-            selectedProjectIDsUpdate(first.id)
-        }
+        // Start on the Welcome screen unless the user explicitly opens an existing file.
+        selectedProjectID = nil
     }
 
     public func selectProject(_ id: UUID) {
