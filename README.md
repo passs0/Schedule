@@ -21,9 +21,10 @@
 
 ## What it does
 
+- **Pages-style Welcome & Templates** — Launch straight into a compact Welcome screen to open recent files, import task lists, or click **New Document… (`⌘N`)** to start from **Blank**, **Hardware & Electronics NPI**, **Software & Firmware Release**, **System Cutover & Migration**, or **Compliance & Lab Certification**.
 - **Plain-English dependencies** — Express relationships naturally (like `After Architecture Freeze` or `2d after Schematic Capture`) with full Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish, and lag support.
-- **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with Days, Weeks, Months, and Quarters zoom and one-click Critical Path highlighting.
-- **Working calendars & holidays** — Customize working days per task or project and import public or team holidays from Apple Calendar or `.ics` files.
+- **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with synchronized Split View scrolling, Days/Weeks/Months/Quarters zoom, Critical Path highlighting, and full `⌘Z` / `⇧⌘Z` Undo/Redo.
+- **Working calendars & holidays** — Customize working days per task, team, or project and import public or team holidays from Apple Calendar or `.ics` files.
 - **Project versions & diff** — Save schedule snapshots and compare timeline, duration, and dependency changes across revisions.
 - **Microsoft Project XML & spreadsheet import** — Import and export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
 - **Formula-driven Excel & Numbers export** — Export live-formula `.xlsx` workbooks (including summary rollups and dependency sheets) or convert straight into native `.numbers` documents via Apple Numbers.

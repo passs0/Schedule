@@ -259,11 +259,12 @@ struct CalendarManagerSheet: View {
     }
 
     private func loadAppleCalendars() {
-        let store = EKEventStore()
-        store.requestFullAccessToEvents { granted, error in
-            Task { @MainActor in
+        Task { @MainActor in
+            let store = EKEventStore()
+            do {
+                let granted = try await store.requestFullAccessToEvents()
                 guard granted else {
-                    importStatusMessage = error?.localizedDescription ?? "Calendar access was not granted in System Settings."
+                    importStatusMessage = "Calendar access was not granted in System Settings."
                     return
                 }
                 let all = store.calendars(for: .event).sorted {
@@ -277,6 +278,8 @@ struct CalendarManagerSheet: View {
                 importStatusMessage = all.isEmpty
                     ? "No calendars found in Apple Calendar."
                     : "Loaded \(all.count) calendars. Pick one and click Import."
+            } catch {
+                importStatusMessage = error.localizedDescription
             }
         }
     }

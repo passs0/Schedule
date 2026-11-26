@@ -103,7 +103,7 @@ struct MainWindowView: View {
                         showingTemplateChooser = false
                     }
                 )
-                .frame(width: 760, height: 520)
+                .frame(width: 720, height: 460)
             }
             .alert(item: $alertInfo) { info in
                 Alert(
