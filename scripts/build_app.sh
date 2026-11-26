@@ -28,17 +28,21 @@ printf "APPL????" > "$CONTENTS_DIR/PkgInfo"
 ICON_BUNDLE="$ROOT_DIR/Resources/Schedule.icon"
 if [[ -d "$ICON_BUNDLE" ]] && xcrun --find actool >/dev/null 2>&1; then
     echo "Compiling dynamic icon bundle ($ICON_BUNDLE) with actool..."
-    xcrun actool "$ICON_BUNDLE" \
+    if xcrun actool "$ICON_BUNDLE" \
         --compile "$RESOURCES_DIR" \
         --app-icon Schedule \
         --platform macosx \
         --target-device mac \
         --minimum-deployment-target 15.0 \
-        --output-partial-info-plist "$ROOT_DIR/.build/icon-info.plist"
-    if [[ ! -f "$RESOURCES_DIR/AppIcon.icns" && -f "$ROOT_DIR/Resources/AppIcon.icns" ]]; then
-        cp "$ROOT_DIR/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+        --development-region en \
+        --enable-on-demand-resources NO \
+        --output-partial-info-plist "$ROOT_DIR/.build/icon-info.plist"; then
+        echo "Compiled dynamic icon Assets.car successfully."
+    else
+        echo "Warning: actool failed on $ICON_BUNDLE; falling back to AppIcon.icns"
     fi
-elif [[ -f "$ROOT_DIR/Resources/AppIcon.icns" ]]; then
+fi
+if [[ ! -f "$RESOURCES_DIR/AppIcon.icns" && -f "$ROOT_DIR/Resources/AppIcon.icns" ]]; then
     cp "$ROOT_DIR/Resources/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
 fi
 
