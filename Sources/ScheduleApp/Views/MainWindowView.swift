@@ -4,7 +4,7 @@ import ScheduleCore
 struct MainWindowView: View {
     @Bindable var store: WorkspaceStore
     @State private var viewModel: ProjectViewModel?
-    @State private var verticalScrollOffset: CGFloat = 0
+    @State private var scrollSync = ScrollSyncState()
 
     @State private var dependencyTargetID: UUID?
     @State private var showingSnapshotSheet = false
@@ -288,7 +288,7 @@ struct MainWindowView: View {
             HStack(spacing: 0) {
                 TaskListView(
                     viewModel: vm,
-                    verticalScrollOffset: $verticalScrollOffset,
+                    scrollSync: scrollSync,
                     onAddDependency: { dependencyTargetID = $0 }
                 )
                 .frame(width: listWidth)
@@ -330,7 +330,7 @@ struct MainWindowView: View {
 
                 GanttChartView(
                     viewModel: vm,
-                    verticalScrollOffset: $verticalScrollOffset
+                    scrollSync: scrollSync
                 )
                 .frame(width: ganttWidth)
                 .clipped()
@@ -349,7 +349,7 @@ struct MainWindowView: View {
                 }
                 vm.undoManager = undoManager
                 viewModel = vm
-                verticalScrollOffset = 0
+                scrollSync.offsetY = 0
             }
         } else {
             viewModel = nil

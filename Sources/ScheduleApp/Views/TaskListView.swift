@@ -4,7 +4,7 @@ import ScheduleCore
 
 struct TaskListView: View {
     @Bindable var viewModel: ProjectViewModel
-    @Binding var verticalScrollOffset: CGFloat
+    let scrollSync: ScrollSyncState
     let onAddDependency: (UUID) -> Void
 
     @State private var editingTaskID: UUID?
@@ -20,6 +20,7 @@ struct TaskListView: View {
         case duration(UUID)
         case progress(UUID)
         case relationship(UUID)
+        case calendar(UUID)
 
         var id: String {
             switch self {
@@ -27,6 +28,7 @@ struct TaskListView: View {
             case .duration(let id): return "dur:\(id)"
             case .progress(let id): return "prog:\(id)"
             case .relationship(let id): return "rel:\(id)"
+            case .calendar(let id): return "cal:\(id)"
             }
         }
     }
@@ -72,18 +74,17 @@ struct TaskListView: View {
                             ))
                     }
                 }
-                .animation(.snappy(duration: 0.22, extraBounce: 0), value: filteredRows.map(\.id))
             }
             .scrollPosition($scrollPosition)
             .onScrollGeometryChange(for: CGFloat.self) { geo in
                 geo.contentOffset.y
             } action: { _, newOffset in
                 ownScrollY = newOffset
-                if abs(verticalScrollOffset - newOffset) > 1.0 {
-                    verticalScrollOffset = newOffset
+                if viewModel.viewMode == .split && abs(scrollSync.offsetY - newOffset) > 1.0 {
+                    scrollSync.offsetY = newOffset
                 }
             }
-            .onChange(of: verticalScrollOffset) { _, newOffset in
+            .onChange(of: scrollSync.offsetY) { _, newOffset in
                 if abs(ownScrollY - newOffset) > 1.0 {
                     ownScrollY = newOffset
                     scrollPosition.scrollTo(y: newOffset)
@@ -631,6 +632,43 @@ struct TaskListView: View {
                 .padding(12)
                 .frame(width: 340)
             }
+        case .calendar(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Assign Calendar")
+                        .font(.callout.weight(.semibold))
+                        .padding(.bottom, 2)
+                    Button {
+                        viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in t.calendarID = nil }
+                        activePopover = nil
+                    } label: {
+                        HStack {
+                            Text("Default (Mon–Fri)")
+                            Spacer()
+                            if task.calendarID == nil { Image(systemName: "checkmark").foregroundStyle(ScheduleTheme.accent) }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    Divider()
+                    ForEach(viewModel.document.calendars) { cal in
+                        Button {
+                            viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in t.calendarID = cal.id }
+                            activePopover = nil
+                        } label: {
+                            HStack {
+                                Text(cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))")
+                                Spacer()
+                                if task.calendarID == cal.id { Image(systemName: "checkmark").foregroundStyle(ScheduleTheme.accent) }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .frame(width: 260)
+            }
         }
     }
 
@@ -644,32 +682,20 @@ struct TaskListView: View {
             let calName = viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.owner
                 .nilIfEmpty ?? viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.name
                 ?? "Default"
-            Menu {
-                Button("Default (Mon–Fri)") {
-                    viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in
-                        t.calendarID = nil
-                    }
-                }
-                Divider()
-                ForEach(viewModel.document.calendars) { cal in
-                    Button("\(cal.name)\(cal.owner.isEmpty ? "" : " (\(cal.owner))")") {
-                        viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in
-                            t.calendarID = cal.id
-                        }
-                    }
-                }
-                .animation(.snappy(duration: 0.22, extraBounce: 0), value: filteredRows.map(\.id))
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.caption2)
-                    Text(calName)
-                        .font(.caption)
-                        .lineLimit(1)
-                }
-                .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+            HStack(spacing: 4) {
+                Image(systemName: "calendar")
+                    .font(.caption2)
+                Text(calName)
+                    .font(.caption)
+                    .lineLimit(1)
             }
-            .menuStyle(.borderlessButton)
+            .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                viewModel.selectTask(task.id)
+                activePopover = .calendar(task.id)
+            }
         }
     }
 }

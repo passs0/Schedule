@@ -38,8 +38,20 @@ public enum WorkspaceViewMode: String, CaseIterable, Identifiable {
 
 @MainActor
 @Observable
+public final class ScrollSyncState {
+    public var offsetY: CGFloat = 0
+    public init() {}
+}
+
+@MainActor
+@Observable
 public final class ProjectViewModel {
-    public var document: ProjectDocument
+    public var document: ProjectDocument {
+        didSet {
+            rebuildVisibleRows()
+        }
+    }
+    public private(set) var visibleRows: [VisibleTaskRow] = []
     public var selectedTaskID: UUID?
     public var viewMode: WorkspaceViewMode = .listOnly
     public var timeScale: GanttTimeScale = .days
@@ -58,6 +70,7 @@ public final class ProjectViewModel {
         self.document = document
         self.onPersist = onPersist
         self.selectedTaskID = document.tasks.first?.id
+        rebuildVisibleRows()
     }
 
     public var selectedTask: ScheduleTask? {
@@ -65,7 +78,7 @@ public final class ProjectViewModel {
         return document.tasks.first { $0.id == id }
     }
 
-    public var visibleRows: [VisibleTaskRow] {
+    private func rebuildVisibleRows() {
         let tasks = document.tasks
         let taskMap = Dictionary(uniqueKeysWithValues: tasks.map { ($0.id, $0) })
         var childrenSet = Set<UUID>()
@@ -99,6 +112,7 @@ public final class ProjectViewModel {
         }
 
         var rows: [VisibleTaskRow] = []
+        rows.reserveCapacity(tasks.count)
         for (idx, task) in tasks.enumerated() {
             if isAncestorCollapsed(task) { continue }
             rows.append(VisibleTaskRow(
@@ -108,7 +122,7 @@ public final class ProjectViewModel {
                 flatIndex: idx
             ))
         }
-        return rows
+        visibleRows = rows
     }
 
     public func selectTask(_ id: UUID?, openInspectorIfNeeded: Bool = false) {

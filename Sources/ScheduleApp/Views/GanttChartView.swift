@@ -3,7 +3,7 @@ import ScheduleCore
 
 struct GanttChartView: View {
     @Bindable var viewModel: ProjectViewModel
-    @Binding var verticalScrollOffset: CGFloat
+    let scrollSync: ScrollSyncState
 
     @State private var dragState: BarDragState?
     @State private var linkDrag: LinkDragState?
@@ -89,11 +89,11 @@ struct GanttChartView: View {
                             geo.contentOffset.y
                         } action: { _, newOffset in
                             ownScrollY = newOffset
-                            if abs(verticalScrollOffset - newOffset) > 1.0 {
-                                verticalScrollOffset = newOffset
+                            if viewModel.viewMode == .split && abs(scrollSync.offsetY - newOffset) > 1.0 {
+                                scrollSync.offsetY = newOffset
                             }
                         }
-                        .onChange(of: verticalScrollOffset) { _, newOffset in
+                        .onChange(of: scrollSync.offsetY) { _, newOffset in
                             if abs(ownScrollY - newOffset) > 1.0 {
                                 ownScrollY = newOffset
                                 scrollPosition.scrollTo(y: newOffset)
