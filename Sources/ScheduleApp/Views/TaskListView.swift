@@ -145,35 +145,35 @@ struct TaskListView: View {
                 .padding(.leading, 12)
             Divider().frame(height: 14)
             Text("Task")
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minWidth: 240, maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)
             if showExtendedColumns {
                 Divider().frame(height: 14)
                 Text("Relationship")
-                    .frame(width: 180, alignment: .leading)
+                    .frame(width: 210, alignment: .leading)
                     .padding(.horizontal, 8)
                 Divider().frame(height: 14)
                 Text("Calendar")
-                    .frame(width: 104, alignment: .leading)
+                    .frame(width: 108, alignment: .leading)
                     .padding(.horizontal, 8)
                 Divider().frame(height: 14)
                 Text("Owner")
-                    .frame(width: 88, alignment: .leading)
+                    .frame(width: 92, alignment: .leading)
                     .padding(.horizontal, 8)
             }
             Divider().frame(height: 14)
             Text("Start")
-                .frame(width: 64, alignment: .leading)
+                .frame(width: 68, alignment: .leading)
                 .padding(.horizontal, 6)
             if showExtendedColumns {
                 Divider().frame(height: 14)
                 Text("End")
-                    .frame(width: 64, alignment: .leading)
+                    .frame(width: 68, alignment: .leading)
                     .padding(.horizontal, 6)
             }
             Divider().frame(height: 14)
             Text("Duration")
-                .frame(width: 58, alignment: .trailing)
+                .frame(width: 76, alignment: .trailing)
                 .padding(.horizontal, 6)
             Divider().frame(height: 14)
             Text("%")
@@ -255,20 +255,20 @@ struct TaskListView: View {
                         .help(dependencyTooltip(for: task, taskMap: taskMap))
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minWidth: 240, maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
 
             if showExtendedColumns {
                 relationshipCell(for: task, isGroup: row.isGroup, isSelected: isSelected, taskMap: taskMap)
-                    .frame(width: 180, alignment: .leading)
+                    .frame(width: 210, alignment: .leading)
                     .padding(.horizontal, 8)
 
                 calendarCell(for: task, isGroup: row.isGroup, isSelected: isSelected)
-                    .frame(width: 104, alignment: .leading)
+                    .frame(width: 108, alignment: .leading)
                     .padding(.horizontal, 8)
 
-                driCell(for: task, isSelected: isSelected)
-                    .frame(width: 88, alignment: .leading)
+                driCell(for: task, isGroup: row.isGroup, isSelected: isSelected)
+                    .frame(width: 92, alignment: .leading)
                     .padding(.horizontal, 8)
             }
 
@@ -277,7 +277,7 @@ struct TaskListView: View {
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(isSelected ? Color.white.opacity(0.9) : (wasJustRescheduled ? ScheduleTheme.accent : Color.secondary))
                 .fontWeight(wasJustRescheduled ? .semibold : .regular)
-                .frame(width: 64, alignment: .leading)
+                .frame(width: 68, alignment: .leading)
                 .padding(.horizontal, 6)
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -289,7 +289,7 @@ struct TaskListView: View {
                 Text(Self.shortDateFormatter.string(from: task.endDate.toDate()))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
-                    .frame(width: 64, alignment: .leading)
+                    .frame(width: 68, alignment: .leading)
                     .padding(.horizontal, 6)
             }
 
@@ -297,6 +297,8 @@ struct TaskListView: View {
                 if task.isMilestone {
                     Text("Milestone")
                         .font(.caption2.weight(.semibold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(
@@ -310,7 +312,7 @@ struct TaskListView: View {
                         .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
                 }
             }
-            .frame(width: 58, alignment: .trailing)
+            .frame(width: 76, alignment: .trailing)
             .padding(.horizontal, 6)
             .contentShape(Rectangle())
             .onTapGesture {
@@ -682,23 +684,35 @@ struct TaskListView: View {
     }
 
     @ViewBuilder
-    private func driCell(for task: ScheduleTask, isSelected: Bool) -> some View {
+    private func driCell(for task: ScheduleTask, isGroup: Bool, isSelected: Bool) -> some View {
         let name = task.dri?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        Text(name.isEmpty ? "Assign…" : name)
-            .font(.caption)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .foregroundStyle(
-                isSelected
-                    ? Color.white.opacity(name.isEmpty ? 0.65 : 0.95)
-                    : (name.isEmpty ? Color.secondary.opacity(0.5) : Color.primary)
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                viewModel.selectTask(task.id)
-                activePopover = .dri(task.id)
-            }
+        if isGroup && name.isEmpty {
+            Text("—")
+                .font(.caption)
+                .foregroundStyle(isSelected ? Color.white.opacity(0.5) : Color.secondary.opacity(0.4))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.selectTask(task.id)
+                    activePopover = .dri(task.id)
+                }
+        } else {
+            Text(name.isEmpty ? "Assign…" : name)
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(
+                    isSelected
+                        ? Color.white.opacity(name.isEmpty ? 0.65 : 0.95)
+                        : (name.isEmpty ? Color.secondary.opacity(0.5) : Color.primary)
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.selectTask(task.id)
+                    activePopover = .dri(task.id)
+                }
+        }
     }
 
     @ViewBuilder

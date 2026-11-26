@@ -464,11 +464,7 @@ private struct WindowSizeController: NSViewRepresentable {
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             if open {
                 window.minSize = NSSize(width: 960, height: 600)
-                let targetW = min(1220, visible.width - 40)
-                let targetH = min(760, visible.height - 40)
-                let x = visible.midX - targetW / 2
-                let y = visible.midY - targetH / 2
-                window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: true)
+                window.setFrame(visible, display: true, animate: true)
             } else {
                 window.minSize = NSSize(width: 560, height: 480)
                 let targetW: CGFloat = 560
