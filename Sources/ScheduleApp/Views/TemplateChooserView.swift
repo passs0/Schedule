@@ -1,124 +1,167 @@
 import SwiftUI
 import ScheduleCore
 
-struct TemplateChooserView: View {
-    let isModal: Bool
-    let onSelectTemplate: (ProjectTemplate) -> Void
-    let onImport: () -> Void
-    var onCancel: (() -> Void)? = nil
+/// Pages-style initial screen shown when no project is open:
+/// lets the user open an existing/recent file or click "New Document…" to pick a template.
+struct WelcomeView: View {
+    let recentProjects: [ProjectDocument]
+    let onOpenProject: (UUID) -> Void
+    let onOpenFile: () -> Void
+    let onNewDocument: () -> Void
 
-    @State private var selectedTemplate: ProjectTemplate = .hardwareProduct
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 22) {
+                VStack(spacing: 8) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .frame(width: 72, height: 72)
+
+                    Text("Schedule")
+                        .font(.largeTitle.weight(.semibold))
+
+                    Text("Open an existing project, import a task list, or create a new schedule.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                if !recentProjects.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Recent Projects")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 4)
+
+                        VStack(spacing: 0) {
+                            ForEach(recentProjects.prefix(5)) { project in
+                                Button {
+                                    onOpenProject(project.id)
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "calendar.day.timeline.leading")
+                                            .font(.callout)
+                                            .foregroundStyle(ScheduleTheme.accent)
+                                            .frame(width: 22)
+
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(project.name)
+                                                .font(.callout.weight(.medium))
+                                                .foregroundStyle(.primary)
+                                            Text("\(project.tasks.count) items")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+
+                                        Spacer()
+
+                                        Text(project.modifiedAt, style: .relative)
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+
+                                if project.id != recentProjects.prefix(5).last?.id {
+                                    Divider().padding(.leading, 44)
+                                }
+                            }
+                        }
+                        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+                        )
+                    }
+                    .frame(maxWidth: 420)
+                }
+
+                HStack(spacing: 12) {
+                    Button {
+                        onOpenFile()
+                    } label: {
+                        Label("Open File…", systemImage: "folder")
+                            .frame(minWidth: 130)
+                    }
+                    .controlSize(.large)
+                    .keyboardShortcut("o", modifiers: .command)
+
+                    Button {
+                        onNewDocument()
+                    } label: {
+                        Label("New Document…", systemImage: "plus")
+                            .frame(minWidth: 145)
+                    }
+                    .controlSize(.large)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(32)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+/// Pages-style "Choose a Template" sheet (no sidebar, card grid + Cancel / Create).
+struct TemplateChooserView: View {
+    let onSelectTemplate: (ProjectTemplate) -> Void
+    let onCancel: () -> Void
+
+    @State private var selectedTemplate: ProjectTemplate = .blank
 
     private let columns = [
-        GridItem(.adaptive(minimum: 220, maximum: 260), spacing: 14)
+        GridItem(.adaptive(minimum: 200, maximum: 230), spacing: 14)
     ]
 
     var body: some View {
         VStack(spacing: 0) {
-            headerBar
+            HStack {
+                Text("Choose a Template")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+
             Divider()
+
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    quickActionsSection
-                    templatesSection
+                LazyVGrid(columns: columns, spacing: 14) {
+                    ForEach(ProjectTemplate.allCases) { template in
+                        templateCard(template)
+                    }
                 }
-                .padding(24)
+                .padding(20)
             }
-            if isModal {
-                Divider()
-                footerBar
+
+            Divider()
+
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    onCancel()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Create") {
+                    onSelectTemplate(selectedTemplate)
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
         .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private var headerBar: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Welcome to Schedule")
-                    .font(.title2.weight(.semibold))
-                Text("Choose an engineering template, start with a blank slate, or import an existing task list.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 18)
-    }
-
-    private var quickActionsSection: some View {
-        HStack(spacing: 12) {
-            Button {
-                onSelectTemplate(.blank)
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "doc.badge.plus")
-                        .font(.title3)
-                        .foregroundStyle(ScheduleTheme.accent)
-                        .frame(width: 32, height: 32)
-                        .background(ScheduleTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Blank Slate")
-                            .font(.callout.weight(.semibold))
-                        Text("Start with an empty schedule")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding(12)
-                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                onImport()
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.title3)
-                        .foregroundStyle(ScheduleTheme.accent)
-                        .frame(width: 32, height: 32)
-                        .background(ScheduleTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Import Task List…")
-                            .font(.callout.weight(.semibold))
-                        Text("Excel (.xlsx), CSV, or MS Project XML")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding(12)
-                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var templatesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Engineering & Tech Templates")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(ProjectTemplate.allCases.filter { $0 != .blank }) { template in
-                    templateCard(template)
-                }
-            }
-        }
     }
 
     private func templateCard(_ template: ProjectTemplate) -> some View {
@@ -127,9 +170,9 @@ struct TemplateChooserView: View {
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: template.systemImage)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(isSelected ? .white : ScheduleTheme.accent)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 36, height: 36)
                     .background(
                         isSelected ? ScheduleTheme.accent : ScheduleTheme.accent.opacity(0.12),
                         in: RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -137,8 +180,8 @@ struct TemplateChooserView: View {
 
                 Spacer()
 
-                Text(template.category.uppercased())
-                    .font(.caption2.weight(.semibold))
+                Text(template.badge)
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(isSelected ? ScheduleTheme.accent : .secondary)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
@@ -157,58 +200,29 @@ struct TemplateChooserView: View {
                 Text(template.subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
-
-            HStack {
-                Spacer()
-                Text(isModal ? "Double-click or Choose" : "Use Template")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(ScheduleTheme.accent)
-                    .opacity(isSelected || !isModal ? 1 : 0)
-            }
         }
         .padding(14)
-        .frame(minHeight: 132, alignment: .topLeading)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .frame(minHeight: 130, alignment: .topLeading)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(
                     isSelected ? ScheduleTheme.accent : Color(nsColor: .separatorColor).opacity(0.55),
-                    lineWidth: isSelected ? 2 : 1
+                    lineWidth: isSelected ? 2.5 : 1
                 )
         )
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture(count: 2) {
             selectedTemplate = template
             onSelectTemplate(template)
         }
         .onTapGesture(count: 1) {
             selectedTemplate = template
-            if !isModal {
-                onSelectTemplate(template)
-            }
         }
-    }
-
-    private var footerBar: some View {
-        HStack {
-            Spacer()
-            Button("Cancel") {
-                onCancel?()
-            }
-            .keyboardShortcut(.cancelAction)
-
-            Button("Choose") {
-                onSelectTemplate(selectedTemplate)
-            }
-            .keyboardShortcut(.defaultAction)
-            .buttonStyle(.borderedProminent)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
     }
 }

@@ -1,75 +1,58 @@
 import Foundation
 
-/// Built-in project templates tailored for technology, software, and electronics engineering teams.
+/// Built-in project templates, each modeling a distinct scheduling structure
+/// (long-lead physical gates with lag, parallel software sprints, pinned cutover windows, or lab compliance cycles).
 public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
     case blank
-    case hardwareProduct
-    case softwareDevelopment
-    case electronicsManufacturing
-    case siliconTapeOut
-    case embeddedFirmware
-    case cloudMigration
-    case roboticsIntegration
+    case hardwareNPI
+    case softwareRelease
+    case systemCutover
+    case complianceAudit
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .blank: return "Blank Project"
-        case .hardwareProduct: return "Hardware Product Development"
-        case .softwareDevelopment: return "Software Release"
-        case .electronicsManufacturing: return "Electronics Manufacturing (EVT/DVT/PVT)"
-        case .siliconTapeOut: return "ASIC / Silicon Tape-Out"
-        case .embeddedFirmware: return "Embedded Firmware & IoT"
-        case .cloudMigration: return "Cloud Infrastructure Migration"
-        case .roboticsIntegration: return "Robotics & Mechatronics"
+        case .blank: return "Blank"
+        case .hardwareNPI: return "Hardware & Electronics NPI"
+        case .softwareRelease: return "Software & Firmware Release"
+        case .systemCutover: return "System Cutover & Migration"
+        case .complianceAudit: return "Compliance & Lab Certification"
         }
     }
 
-    public var category: String {
+    public var badge: String {
         switch self {
-        case .blank: return "Starter"
-        case .hardwareProduct: return "Hardware"
-        case .softwareDevelopment: return "Software"
-        case .electronicsManufacturing: return "Manufacturing"
-        case .siliconTapeOut: return "Semiconductor"
-        case .embeddedFirmware: return "Firmware"
-        case .cloudMigration: return "Infrastructure"
-        case .roboticsIntegration: return "Robotics"
+        case .blank: return "Empty"
+        case .hardwareNPI: return "Long-Lead & Gates"
+        case .softwareRelease: return "Parallel Sprints"
+        case .systemCutover: return "Pinned Window"
+        case .complianceAudit: return "Lab & Remediation"
         }
     }
 
     public var subtitle: String {
         switch self {
         case .blank:
-            return "Start from a clean slate with a single kickoff task."
-        case .hardwareProduct:
-            return "Industrial design, prototyping, manufacturing, packaging, and launch."
-        case .softwareDevelopment:
-            return "Architecture, parallel backend/UI/auth streams, QA & security, and rollout."
-        case .electronicsManufacturing:
-            return "Schematic & PCB layout through EVT, parallel DVT tooling/EMC, PVT, and MP."
-        case .siliconTapeOut:
-            return "RTL freeze, verification & synthesis, place & route, tape-out, and bring-up."
-        case .embeddedFirmware:
-            return "BSP & bootloader, parallel driver/wireless/OTA tracks, profiling, and soak."
-        case .cloudMigration:
-            return "Landing zone, parallel DB & service migration, dry-run, and cutover."
-        case .roboticsIntegration:
-            return "CAD, parallel procurement & harness, kinematics & sensor fusion, and FAT."
+            return "Clean slate with a single kickoff task."
+        case .hardwareNPI:
+            return "EVT/DVT/PVT gates with supplier fab lead-time lags and tooling."
+        case .softwareRelease:
+            return "Concurrent engineering tracks converging at code freeze, QA, and rollout."
+        case .systemCutover:
+            return "Parallel prep converging on a pinned production cutover window."
+        case .complianceAudit:
+            return "Pre-scan, external lab lead times, corrective fixes, and certification."
         }
     }
 
     public var systemImage: String {
         switch self {
         case .blank: return "doc"
-        case .hardwareProduct: return "shippingbox"
-        case .softwareDevelopment: return "chevron.left.forwardslash.chevron.right"
-        case .electronicsManufacturing: return "cpu"
-        case .siliconTapeOut: return "memorychip"
-        case .embeddedFirmware: return "wave.3.right"
-        case .cloudMigration: return "cloud"
-        case .roboticsIntegration: return "gearshape.2"
+        case .hardwareNPI: return "cpu"
+        case .softwareRelease: return "chevron.left.forwardslash.chevron.right"
+        case .systemCutover: return "arrow.triangle.swap"
+        case .complianceAudit: return "checkmark.seal"
         }
     }
 
@@ -87,137 +70,77 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                 ]
             )
 
-        case .hardwareProduct:
-            var doc = ProjectDocument.sampleProject(referenceDate: start)
-            doc.name = "Hardware Product Development"
-            doc.tasks = doc.tasks.map { task in
-                var copy = task
-                copy.percentComplete = 0
-                return copy
-            }
-            return doc
-
-        case .softwareDevelopment:
+        case .hardwareNPI:
+            // Models physical product NPI: fab/shipping lag times and strict EVT -> DVT -> PVT gates.
             return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("Discovery & Architecture", "Requirements, API contracts, and system design.", [
-                    TaskSpec("spec", "Product Spec & Scope Freeze", 4),
-                    TaskSpec("arch", "System Architecture & API Contracts", 5, after: ["spec"]),
-                    TaskSpec("arch_gate", "Architecture Sign-Off", 0, milestone: true, after: ["arch"])
+                PhaseSpec("Design & EVT", "Schematic, PCB layout, and first-article bring-up.", [
+                    TaskSpec("spec", "Architecture & BOM Lock", 5),
+                    TaskSpec("pcb", "Schematic & PCB Layout", 8, after: ["spec"]),
+                    TaskSpec("evt_fab", "EVT Fab & SMT Assembly", 5, after: ["pcb"], lag: 3), // shipping/fab queue lag
+                    TaskSpec("evt_bringup", "EVT Bring-Up & Rework", 5, after: ["evt_fab"]),
+                    TaskSpec("evt_gate", "EVT Exit Gate", 0, milestone: true, after: ["evt_bringup"])
                 ]),
-                PhaseSpec("Core Engineering", "Parallel backend, client UI, and platform tracks.", [
-                    TaskSpec("backend", "Backend Services & Data Layer", 10, after: ["arch_gate"]),
-                    TaskSpec("frontend", "Client UI & State Management", 10, after: ["arch_gate"]),
-                    TaskSpec("auth", "Auth, Telemetry & CI/CD", 6, after: ["arch_gate"]),
-                    TaskSpec("feat_gate", "Feature Complete", 0, milestone: true, after: ["backend", "frontend", "auth"])
-                ]),
-                PhaseSpec("Verification & Release", "QA regression, security review, and staged rollout.", [
-                    TaskSpec("qa", "Integration & Regression QA", 5, after: ["feat_gate"]),
-                    TaskSpec("sec", "Security & Performance Audit", 3, after: ["feat_gate"]),
-                    TaskSpec("rollout", "Production Rollout", 0, milestone: true, after: ["qa", "sec"])
-                ])
-            ])
-
-        case .electronicsManufacturing:
-            return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("Schematic & PCB Layout", "EE design, component selection, and fab release.", [
-                    TaskSpec("sch", "Schematic Capture & BOM Lock", 6),
-                    TaskSpec("pcb", "Multi-Layer PCB Layout & DFM", 8, after: ["sch"]),
-                    TaskSpec("gerber", "Gerber Release to Fab", 0, milestone: true, after: ["pcb"])
-                ]),
-                PhaseSpec("EVT (Engineering Validation)", "PCBA bring-up, rework, and functional validation.", [
-                    TaskSpec("smt", "Bare Board Fab & SMT Assembly", 10, after: ["gerber"]),
-                    TaskSpec("bringup", "Board Bring-Up & Power Rail Tests", 5, after: ["smt"]),
-                    TaskSpec("evt_gate", "EVT Exit Review", 0, milestone: true, after: ["bringup"])
-                ]),
-                PhaseSpec("DVT (Design Validation)", "Parallel enclosure tooling and compliance testing.", [
-                    TaskSpec("tooling", "Hard Tooling & Mechanical Fit", 10, after: ["evt_gate"]),
-                    TaskSpec("emc", "FCC / CE / UL Pre-Compliance & EMC", 7, after: ["evt_gate"]),
+                PhaseSpec("DVT & Tooling", "Hard tooling and regulatory pre-compliance in parallel.", [
+                    TaskSpec("tooling", "Enclosure Tooling & Fit", 10, after: ["evt_gate"]),
+                    TaskSpec("emc", "EMC / Safety Pre-Compliance", 6, after: ["evt_gate"]),
                     TaskSpec("dvt_gate", "DVT Sign-Off", 0, milestone: true, after: ["tooling", "emc"])
                 ]),
-                PhaseSpec("PVT & Mass Production", "ATE calibration, pilot run, and MP ramp.", [
-                    TaskSpec("ate", "ATE Test Fixture Calibration", 4, after: ["dvt_gate"]),
-                    TaskSpec("pvt", "PVT Pilot Run & Yield Audit", 6, after: ["ate"]),
+                PhaseSpec("PVT & Mass Production", "Pilot line qualification and MP ramp.", [
+                    TaskSpec("pvt", "PVT Pilot Run & Yield Audit", 6, after: ["dvt_gate"], lag: 2),
                     TaskSpec("mp", "Mass Production Ramp", 0, milestone: true, after: ["pvt"])
                 ])
             ])
 
-        case .siliconTapeOut:
+        case .softwareRelease:
+            // Models iterative software/firmware: concurrent tracks converging at Feature Freeze, overlapping QA & Security.
             return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("RTL Design & Microarchitecture", "Block specs, RTL coding, and CDC checks.", [
-                    TaskSpec("uarch", "Microarchitecture Spec", 6),
-                    TaskSpec("rtl", "RTL Implementation & CDC Checks", 12, after: ["uarch"]),
-                    TaskSpec("rtl_freeze", "RTL Freeze", 0, milestone: true, after: ["rtl"])
+                PhaseSpec("Planning & Architecture", "Scope lock and API/interface contracts.", [
+                    TaskSpec("scope", "Product Spec & Scope Lock", 3),
+                    TaskSpec("api", "Architecture & API Contracts", 4, after: ["scope"]),
+                    TaskSpec("arch_gate", "Design Freeze", 0, milestone: true, after: ["api"])
                 ]),
-                PhaseSpec("Verification & Synthesis", "UVM regression and logic synthesis.", [
-                    TaskSpec("uvm", "UVM Functional Verification", 12, after: ["rtl_freeze"]),
-                    TaskSpec("synth", "Logic Synthesis & DFT Insertion", 6, after: ["rtl_freeze"], lag: 4),
-                    TaskSpec("netlist", "Netlist Handoff", 0, milestone: true, after: ["uvm", "synth"])
+                PhaseSpec("Engineering Tracks", "Parallel implementation streams converging at feature freeze.", [
+                    TaskSpec("core", "Core Services / Firmware", 8, after: ["arch_gate"]),
+                    TaskSpec("ui", "Client UI & State Layer", 8, after: ["arch_gate"]),
+                    TaskSpec("infra", "Telemetry, Auth & CI Pipeline", 5, after: ["arch_gate"]),
+                    TaskSpec("freeze", "Feature Freeze", 0, milestone: true, after: ["core", "ui", "infra"])
                 ]),
-                PhaseSpec("Physical Design & Tape-Out", "Place & route, STA timing closure, and DRC/LVS.", [
-                    TaskSpec("pnr", "Floorplan, Place & Route", 10, after: ["netlist"]),
-                    TaskSpec("sta", "Static Timing Analysis & DRC/LVS", 6, after: ["pnr"]),
-                    TaskSpec("gds", "GDSII Tape-Out", 0, milestone: true, after: ["sta"])
-                ]),
-                PhaseSpec("Silicon Bring-Up", "Foundry shuttle and lab characterization.", [
-                    TaskSpec("fab", "Wafer Fab & Packaging", 15, after: ["gds"]),
-                    TaskSpec("bench", "Bench Bring-Up & Shmoo Testing", 8, after: ["fab"]),
-                    TaskSpec("samples", "Engineering Samples Ready", 0, milestone: true, after: ["bench"])
+                PhaseSpec("Hardening & Rollout", "Concurrent QA, security review, and staged release.", [
+                    TaskSpec("qa", "Regression & Integration QA", 5, after: ["freeze"]),
+                    TaskSpec("sec", "Security & Performance Audit", 3, after: ["freeze"]),
+                    TaskSpec("release", "Production Rollout", 0, milestone: true, after: ["qa", "sec"])
                 ])
             ])
 
-        case .embeddedFirmware:
+        case .systemCutover:
+            // Models infrastructure cutover: parallel prep + dry-run leading to a pinned cutover window.
+            let cutoverStart = cal.addWorkingDays(18, to: start)
             return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("BSP & Bootloader", "Board bring-up, secure boot, and RTOS configuration.", [
-                    TaskSpec("rtos", "Toolchain & RTOS Bring-Up", 4),
-                    TaskSpec("boot", "Secure Bootloader & Partitioning", 5, after: ["rtos"]),
-                    TaskSpec("bsp_gate", "BSP Milestone", 0, milestone: true, after: ["boot"])
+                PhaseSpec("Preparation", "Parallel landing zone and data replication setup.", [
+                    TaskSpec("audit", "Dependency & Risk Audit", 3),
+                    TaskSpec("iac", "Landing Zone & Network Peering", 6, after: ["audit"]),
+                    TaskSpec("cdc", "Data Replication & Sync", 7, after: ["audit"]),
+                    TaskSpec("dryrun", "Dry-Run Cutover & Load Test", 3, after: ["iac", "cdc"]),
+                    TaskSpec("go_nogo", "Go / No-Go Review", 0, milestone: true, after: ["dryrun"])
                 ]),
-                PhaseSpec("Drivers & Connectivity", "Parallel sensor drivers, wireless stack, and OTA.", [
-                    TaskSpec("drivers", "Peripheral & Sensor Drivers", 8, after: ["bsp_gate"]),
-                    TaskSpec("ble", "Wireless Stack & Cloud Telemetry", 7, after: ["bsp_gate"]),
-                    TaskSpec("ota", "Signed OTA Update Pipeline", 5, after: ["bsp_gate"])
-                ]),
-                PhaseSpec("Profiling & Field Trial", "Power/thermal tuning and soak testing.", [
-                    TaskSpec("power", "Power & Thermal Profiling", 5, after: ["drivers", "ble", "ota"]),
-                    TaskSpec("soak", "72-Hour Soak & Field Trial", 6, after: ["power"]),
-                    TaskSpec("fw_freeze", "Production Firmware Freeze", 0, milestone: true, after: ["soak"])
+                PhaseSpec("Cutover Window", "Pinned production switchover and hypercare.", [
+                    TaskSpec("cutover", "Production Cutover Window", 2, after: ["go_nogo"], pinnedStart: cutoverStart),
+                    TaskSpec("hyper", "Hypercare & SLO Verification", 3, after: ["cutover"]),
+                    TaskSpec("complete", "Cutover Complete", 0, milestone: true, after: ["hyper"])
                 ])
             ])
 
-        case .cloudMigration:
+        case .complianceAudit:
+            // Models external lab / certification: internal pre-check, external lab queue lag, remediation, final cert.
             return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("Assessment & Landing Zone", "Dependency mapping, Terraform VPC, and IAM.", [
-                    TaskSpec("audit", "Workload & Dependency Audit", 4),
-                    TaskSpec("iac", "IaC Landing Zone & Network Peering", 6, after: ["audit"]),
-                    TaskSpec("lz_gate", "Landing Zone Ready", 0, milestone: true, after: ["iac"])
+                PhaseSpec("Readiness & Pre-Test", "Documentation package and internal pre-scan.", [
+                    TaskSpec("docs", "Technical File & Evidence Prep", 5),
+                    TaskSpec("prescan", "Internal Pre-Scan & Dry Audit", 4, after: ["docs"])
                 ]),
-                PhaseSpec("Data & Service Migration", "Parallel database replication and containerization.", [
-                    TaskSpec("db", "Database Schema & CDC Replication", 8, after: ["lz_gate"]),
-                    TaskSpec("svc", "Service Containerization & CI/CD", 7, after: ["lz_gate"]),
-                    TaskSpec("dryrun", "Dry-Run Cutover & Load Test", 4, after: ["db", "svc"])
-                ]),
-                PhaseSpec("Cutover & Hardening", "DNS switch, monitoring, and hypercare.", [
-                    TaskSpec("cutover", "Production Cutover Window", 2, after: ["dryrun"]),
-                    TaskSpec("hyper", "48-Hour Hypercare & SLO Check", 3, after: ["cutover"]),
-                    TaskSpec("done", "Migration Complete", 0, milestone: true, after: ["hyper"])
-                ])
-            ])
-
-        case .roboticsIntegration:
-            return buildTemplate(name: title, start: start, cal: cal, phases: [
-                PhaseSpec("Mechanical & Harnessing", "CAD assemblies, machining, and control harness.", [
-                    TaskSpec("cad", "CAD Assembly & Tolerance Stack", 7),
-                    TaskSpec("cnc", "CNC Machining & Actuator Procurement", 10, after: ["cad"]),
-                    TaskSpec("harness", "Control Harness & Safety Interlocks", 6, after: ["cad"]),
-                    TaskSpec("mech_gate", "Mechanical & Harness Integration", 0, milestone: true, after: ["cnc", "harness"])
-                ]),
-                PhaseSpec("Motion & Sensor Fusion", "Parallel kinematics tuning and sensor calibration.", [
-                    TaskSpec("motion", "Motion Control & Kinematics Tuning", 8, after: ["mech_gate"]),
-                    TaskSpec("fusion", "Sensor Fusion & Calibration", 6, after: ["mech_gate"])
-                ]),
-                PhaseSpec("Burn-In & Acceptance", "Cycle testing and factory acceptance.", [
-                    TaskSpec("burnin", "Continuous Cycle Burn-In", 7, after: ["motion", "fusion"]),
-                    TaskSpec("fat", "Factory Acceptance Test (FAT)", 0, milestone: true, after: ["burnin"])
+                PhaseSpec("External Lab / Audit", "Accredited lab testing with booking lead-time lag.", [
+                    TaskSpec("lab", "Accredited Lab / Formal Audit", 5, after: ["prescan"], lag: 4),
+                    TaskSpec("remediate", "Corrective Actions & Retest", 4, after: ["lab"]),
+                    TaskSpec("certified", "Certification Issued", 0, milestone: true, after: ["remediate"])
                 ])
             ])
         }
@@ -230,14 +153,24 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
         let isMilestone: Bool
         let after: [String]
         let lag: Int
+        let pinnedStart: CalendarDay?
 
-        init(_ key: String, _ title: String, _ duration: Int, milestone: Bool = false, after: [String] = [], lag: Int = 0) {
+        init(
+            _ key: String,
+            _ title: String,
+            _ duration: Int,
+            milestone: Bool = false,
+            after: [String] = [],
+            lag: Int = 0,
+            pinnedStart: CalendarDay? = nil
+        ) {
             self.key = key
             self.title = title
             self.duration = duration
             self.isMilestone = milestone
             self.after = after
             self.lag = lag
+            self.pinnedStart = pinnedStart
         }
     }
 
@@ -262,7 +195,6 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
         var allTasks: [ScheduleTask] = []
         var idByKey: [String: UUID] = [:]
 
-        // Pre-assign UUIDs so any task can reference any predecessor key
         for phase in phases {
             for item in phase.tasks {
                 idByKey[item.key] = UUID()
@@ -295,12 +227,13 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         id: taskID,
                         identifier: "\(pIndex + 1).\(tIndex + 1)",
                         title: item.title,
-                        startDate: start,
+                        startDate: item.pinnedStart ?? start,
                         durationDays: item.isMilestone ? 0 : item.duration,
                         isMilestone: item.isMilestone,
                         percentComplete: 0,
                         parentID: groupID,
                         dependencies: deps,
+                        isManuallyScheduled: item.pinnedStart != nil,
                         calendar: cal
                     )
                 )

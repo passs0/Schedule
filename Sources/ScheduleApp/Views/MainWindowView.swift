@@ -73,21 +73,16 @@ struct MainWindowView: View {
             }
             .sheet(isPresented: $showingTemplateChooser) {
                 TemplateChooserView(
-                    isModal: true,
                     onSelectTemplate: { template in
                         showingTemplateChooser = false
                         _ = store.createNewProject(template: template)
                         syncViewModel()
                     },
-                    onImport: {
-                        showingTemplateChooser = false
-                        handleImport()
-                    },
                     onCancel: {
                         showingTemplateChooser = false
                     }
                 )
-                .frame(width: 780, height: 560)
+                .frame(width: 720, height: 470)
             }
             .alert(item: $alertInfo) { info in
                 Alert(
@@ -119,14 +114,17 @@ struct MainWindowView: View {
             if let vm = viewModel {
                 detailContent(vm: vm)
             } else {
-                TemplateChooserView(
-                    isModal: false,
-                    onSelectTemplate: { template in
-                        _ = store.createNewProject(template: template)
+                WelcomeView(
+                    recentProjects: store.recentProjects,
+                    onOpenProject: { id in
+                        store.selectProject(id)
                         syncViewModel()
                     },
-                    onImport: {
+                    onOpenFile: {
                         handleImport()
+                    },
+                    onNewDocument: {
+                        showingTemplateChooser = true
                     }
                 )
             }
