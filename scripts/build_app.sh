@@ -41,14 +41,16 @@ if [[ -d "$ICON_BUNDLE" ]] && xcrun --find actool >/dev/null 2>&1; then
         STAGE_ICON="$ROOT_DIR/.build/Schedule.icon"
         rm -rf "$STAGE_ICON"
         cp -R "$ICON_BUNDLE" "$STAGE_ICON"
-        python3 -c '
-import json, pathlib
-p = pathlib.Path("'"$STAGE_ICON"'/icon.json")
-data = json.loads(p.read_text())
-data.pop("features", None)
-for g in data.get("groups", []):
-    g.pop("refractivity", None)
-p.write_text(json.dumps(data, indent=2))
+        swift -e '
+import Foundation
+let url = URL(fileURLWithPath: "'"$STAGE_ICON"'/icon.json")
+var data = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as! [String: Any]
+data.removeValue(forKey: "features")
+if var groups = data["groups"] as? [[String: Any]] {
+    for i in groups.indices { groups[i].removeValue(forKey: "refractivity") }
+    data["groups"] = groups
+}
+try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted, .sortedKeys]).write(to: url)
 '
         xcrun actool "$STAGE_ICON" \
             --compile "$RESOURCES_DIR" \
