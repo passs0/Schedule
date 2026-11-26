@@ -141,7 +141,7 @@ struct TaskListView: View {
     private var headerBar: some View {
         HStack(spacing: 0) {
             Text("#")
-                .frame(width: 48, alignment: .leading)
+                .frame(width: 42, alignment: .leading)
                 .padding(.leading, 12)
             Divider().frame(height: 14)
             Text("Task")
@@ -150,34 +150,34 @@ struct TaskListView: View {
             if showExtendedColumns {
                 Divider().frame(height: 14)
                 Text("Relationship")
-                    .frame(width: 240, alignment: .leading)
-                    .padding(.horizontal, 10)
+                    .frame(width: 180, alignment: .leading)
+                    .padding(.horizontal, 8)
                 Divider().frame(height: 14)
                 Text("Calendar")
-                    .frame(width: 118, alignment: .leading)
+                    .frame(width: 104, alignment: .leading)
                     .padding(.horizontal, 8)
                 Divider().frame(height: 14)
                 Text("Owner")
-                    .frame(width: 96, alignment: .leading)
+                    .frame(width: 88, alignment: .leading)
                     .padding(.horizontal, 8)
             }
             Divider().frame(height: 14)
             Text("Start")
-                .frame(width: 72, alignment: .leading)
-                .padding(.horizontal, 8)
+                .frame(width: 64, alignment: .leading)
+                .padding(.horizontal, 6)
             if showExtendedColumns {
                 Divider().frame(height: 14)
                 Text("End")
-                    .frame(width: 72, alignment: .leading)
-                    .padding(.horizontal, 8)
+                    .frame(width: 64, alignment: .leading)
+                    .padding(.horizontal, 6)
             }
             Divider().frame(height: 14)
             Text("Duration")
-                .frame(width: 68, alignment: .trailing)
-                .padding(.horizontal, 8)
+                .frame(width: 58, alignment: .trailing)
+                .padding(.horizontal, 6)
             Divider().frame(height: 14)
             Text("%")
-                .frame(width: 48, alignment: .trailing)
+                .frame(width: 42, alignment: .trailing)
                 .padding(.trailing, 12)
         }
         .font(.caption.weight(.semibold))
@@ -195,7 +195,7 @@ struct TaskListView: View {
             Text(task.identifier)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
-                .frame(width: 48, alignment: .leading)
+                .frame(width: 42, alignment: .leading)
                 .padding(.leading, 12)
 
             // Title & Hierarchy
@@ -260,15 +260,15 @@ struct TaskListView: View {
 
             if showExtendedColumns {
                 relationshipCell(for: task, isGroup: row.isGroup, isSelected: isSelected, taskMap: taskMap)
-                    .frame(width: 240, alignment: .leading)
-                    .padding(.horizontal, 10)
+                    .frame(width: 180, alignment: .leading)
+                    .padding(.horizontal, 8)
 
                 calendarCell(for: task, isGroup: row.isGroup, isSelected: isSelected)
-                    .frame(width: 118, alignment: .leading)
+                    .frame(width: 104, alignment: .leading)
                     .padding(.horizontal, 8)
 
                 driCell(for: task, isSelected: isSelected)
-                    .frame(width: 96, alignment: .leading)
+                    .frame(width: 88, alignment: .leading)
                     .padding(.horizontal, 8)
             }
 
@@ -277,8 +277,8 @@ struct TaskListView: View {
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(isSelected ? Color.white.opacity(0.9) : (wasJustRescheduled ? ScheduleTheme.accent : Color.secondary))
                 .fontWeight(wasJustRescheduled ? .semibold : .regular)
-                .frame(width: 72, alignment: .leading)
-                .padding(.horizontal, 8)
+                .frame(width: 64, alignment: .leading)
+                .padding(.horizontal, 6)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     viewModel.selectTask(task.id)
@@ -289,8 +289,8 @@ struct TaskListView: View {
                 Text(Self.shortDateFormatter.string(from: task.endDate.toDate()))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
-                    .frame(width: 72, alignment: .leading)
-                    .padding(.horizontal, 8)
+                    .frame(width: 64, alignment: .leading)
+                    .padding(.horizontal, 6)
             }
 
             Group {
@@ -310,8 +310,8 @@ struct TaskListView: View {
                         .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
                 }
             }
-            .frame(width: 68, alignment: .trailing)
-            .padding(.horizontal, 8)
+            .frame(width: 58, alignment: .trailing)
+            .padding(.horizontal, 6)
             .contentShape(Rectangle())
             .onTapGesture {
                 viewModel.selectTask(task.id)
@@ -325,7 +325,7 @@ struct TaskListView: View {
                         ? Color.white.opacity(0.9)
                         : (task.percentComplete >= 100 ? ScheduleTheme.accent : Color.secondary)
                 )
-                .frame(width: 48, alignment: .trailing)
+                .frame(width: 42, alignment: .trailing)
                 .padding(.trailing, 12)
                 .contentShape(Rectangle())
                 .onTapGesture {
