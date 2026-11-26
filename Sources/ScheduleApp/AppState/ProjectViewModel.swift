@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import ScheduleCore
 
 public struct VisibleTaskRow: Identifiable, Equatable {
@@ -37,10 +38,105 @@ public enum WorkspaceViewMode: String, CaseIterable, Identifiable {
 }
 
 @MainActor
-@Observable
 public final class ScrollSyncState {
-    public var offsetY: CGFloat = 0
+    public enum Pane { case list, gantt }
+
+    private weak var listScrollView: NSScrollView?
+    private weak var ganttScrollView: NSScrollView?
+    private var listObserver: NSObjectProtocol?
+    private var ganttObserver: NSObjectProtocol?
+    private var isSyncing = false
+
     public init() {}
+
+    public func register(_ scrollView: NSScrollView, for pane: Pane) {
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        switch pane {
+        case .list:
+            guard listScrollView !== scrollView else { return }
+            if let obs = listObserver { NotificationCenter.default.removeObserver(obs) }
+            listScrollView = scrollView
+            listObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.sync(from: .list)
+                }
+            }
+        case .gantt:
+            guard ganttScrollView !== scrollView else { return }
+            if let obs = ganttObserver { NotificationCenter.default.removeObserver(obs) }
+            ganttScrollView = scrollView
+            ganttObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.sync(from: .gantt)
+                }
+            }
+        }
+    }
+
+    public func reset() {
+        listScrollView?.contentView.setBoundsOrigin(.zero)
+        ganttScrollView?.contentView.setBoundsOrigin(.zero)
+    }
+
+    private func sync(from source: Pane) {
+        guard !isSyncing else { return }
+        guard let listSV = listScrollView, let ganttSV = ganttScrollView else { return }
+        isSyncing = true
+        defer { isSyncing = false }
+
+        switch source {
+        case .list:
+            let y = listSV.contentView.bounds.origin.y
+            let currentX = ganttSV.contentView.bounds.origin.x
+            if abs(ganttSV.contentView.bounds.origin.y - y) > 0.5 {
+                ganttSV.contentView.setBoundsOrigin(NSPoint(x: currentX, y: y))
+                ganttSV.reflectScrolledClipView(ganttSV.contentView)
+            }
+        case .gantt:
+            let y = ganttSV.contentView.bounds.origin.y
+            let currentX = listSV.contentView.bounds.origin.x
+            if abs(listSV.contentView.bounds.origin.y - y) > 0.5 {
+                listSV.contentView.setBoundsOrigin(NSPoint(x: currentX, y: y))
+                listSV.reflectScrolledClipView(listSV.contentView)
+            }
+        }
+    }
+}
+
+public struct ScrollSyncAnchor: NSViewRepresentable {
+    public let pane: ScrollSyncState.Pane
+    public let state: ScrollSyncState
+
+    public init(pane: ScrollSyncState.Pane, state: ScrollSyncState) {
+        self.pane = pane
+        self.state = state
+    }
+
+    public func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async { [weak view] in
+            if let sv = view?.enclosingScrollView {
+                state.register(sv, for: pane)
+            }
+        }
+        return view
+    }
+
+    public func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { [weak nsView] in
+            if let sv = nsView?.enclosingScrollView {
+                state.register(sv, for: pane)
+            }
+        }
+    }
 }
 
 @MainActor

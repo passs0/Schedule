@@ -349,7 +349,7 @@ struct MainWindowView: View {
                 }
                 vm.undoManager = undoManager
                 viewModel = vm
-                scrollSync.offsetY = 0
+                scrollSync.reset()
             }
         } else {
             viewModel = nil

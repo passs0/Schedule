@@ -12,8 +12,6 @@ struct TaskListView: View {
     @State private var draggingTaskID: UUID?
     @State private var searchText: String = ""
     @State private var activePopover: CellPopover?
-    @State private var scrollPosition = ScrollPosition(y: 0)
-    @State private var ownScrollY: CGFloat = 0
 
     private enum CellPopover: Identifiable, Equatable {
         case start(UUID)
@@ -74,21 +72,7 @@ struct TaskListView: View {
                             ))
                     }
                 }
-            }
-            .scrollPosition($scrollPosition)
-            .onScrollGeometryChange(for: CGFloat.self) { geo in
-                geo.contentOffset.y
-            } action: { _, newOffset in
-                ownScrollY = newOffset
-                if viewModel.viewMode == .split && abs(scrollSync.offsetY - newOffset) > 1.0 {
-                    scrollSync.offsetY = newOffset
-                }
-            }
-            .onChange(of: scrollSync.offsetY) { _, newOffset in
-                if abs(ownScrollY - newOffset) > 1.0 {
-                    ownScrollY = newOffset
-                    scrollPosition.scrollTo(y: newOffset)
-                }
+                .background(ScrollSyncAnchor(pane: .list, state: scrollSync))
             }
         }
         .background(Color(nsColor: .textBackgroundColor))

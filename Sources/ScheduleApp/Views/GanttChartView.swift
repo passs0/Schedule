@@ -8,8 +8,6 @@ struct GanttChartView: View {
     @State private var dragState: BarDragState?
     @State private var linkDrag: LinkDragState?
     @State private var hoveredTaskID: UUID?
-    @State private var scrollPosition = ScrollPosition(y: 0)
-    @State private var ownScrollY: CGFloat = 0
 
     private static let weekMonthDayFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -83,21 +81,7 @@ struct GanttChartView: View {
                                 interactiveOverlay(rows: rows, timelineStart: bounds.start)
                                     .frame(width: totalWidth, height: totalHeight)
                             }
-                        }
-                        .scrollPosition($scrollPosition)
-                        .onScrollGeometryChange(for: CGFloat.self) { geo in
-                            geo.contentOffset.y
-                        } action: { _, newOffset in
-                            ownScrollY = newOffset
-                            if viewModel.viewMode == .split && abs(scrollSync.offsetY - newOffset) > 1.0 {
-                                scrollSync.offsetY = newOffset
-                            }
-                        }
-                        .onChange(of: scrollSync.offsetY) { _, newOffset in
-                            if abs(ownScrollY - newOffset) > 1.0 {
-                                ownScrollY = newOffset
-                                scrollPosition.scrollTo(y: newOffset)
-                            }
+                            .background(ScrollSyncAnchor(pane: .gantt, state: scrollSync))
                         }
                     }
                 }
