@@ -13,7 +13,7 @@ struct TaskListView: View {
     @State private var searchText: String = ""
     @State private var activePopover: CellPopover?
     @State private var scrollPosition = ScrollPosition(y: 0)
-    @State private var isSyncingFromPeer = false
+    @State private var ownScrollY: CGFloat = 0
 
     private enum CellPopover: Identifiable, Equatable {
         case start(UUID)
@@ -78,18 +78,22 @@ struct TaskListView: View {
             .onScrollGeometryChange(for: CGFloat.self) { geo in
                 geo.contentOffset.y
             } action: { _, newOffset in
-                guard !isSyncingFromPeer else { return }
-                if abs(verticalScrollOffset - newOffset) > 0.5 {
+                ownScrollY = newOffset
+                if abs(verticalScrollOffset - newOffset) > 1.0 {
                     verticalScrollOffset = newOffset
                 }
             }
             .onChange(of: verticalScrollOffset) { _, newOffset in
-                isSyncingFromPeer = true
-                scrollPosition.scrollTo(y: newOffset)
-                DispatchQueue.main.async { isSyncingFromPeer = false }
+                if abs(ownScrollY - newOffset) > 1.0 {
+                    ownScrollY = newOffset
+                    scrollPosition.scrollTo(y: newOffset)
+                }
             }
         }
         .background(Color(nsColor: .textBackgroundColor))
+        .popover(item: $activePopover) { pop in
+            popoverContent(for: pop)
+        }
     }
 
     private var listSummaryBar: some View {
@@ -282,41 +286,6 @@ struct TaskListView: View {
                     viewModel.selectTask(task.id)
                     if !row.isGroup { activePopover = .start(task.id) }
                 }
-                .popover(isPresented: Binding(
-                    get: { activePopover == .start(task.id) },
-                    set: { if !$0 { activePopover = nil } }
-                ), arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        DatePicker(
-                            "Start Date",
-                            selection: Binding(
-                                get: { task.startDate.toDate() },
-                                set: { date in
-                                    viewModel.updateTask(task.id, actionName: "Change Start Date") { t, cal in
-                                        let day = cal.snapToWorkingDay(CalendarDay(date: date, calendar: .current), forward: true)
-                                        t.startDate = day
-                                        t.endDate = t.isMilestone ? day : cal.endDate(startingOn: day, durationDays: t.durationDays)
-                                        t.isManuallyScheduled = true
-                                    }
-                                }
-                            ),
-                            displayedComponents: .date
-                        )
-                        .datePickerStyle(.graphical)
-                        .labelsHidden()
-
-                        if task.isManuallyScheduled && !task.dependencies.isEmpty {
-                            Button("Follow Dependencies (Auto)") {
-                                viewModel.updateTask(task.id, actionName: "Auto-Schedule Task") { t, _ in
-                                    t.isManuallyScheduled = false
-                                }
-                                activePopover = nil
-                            }
-                            .controlSize(.small)
-                        }
-                    }
-                    .padding(10)
-                }
 
             if showExtendedColumns {
                 Text(Self.shortDateFormatter.string(from: task.endDate.toDate()))
@@ -345,45 +314,11 @@ struct TaskListView: View {
             }
             .frame(width: 68, alignment: .trailing)
             .padding(.horizontal, 8)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    viewModel.selectTask(task.id)
-                    if !row.isGroup && !task.isMilestone { activePopover = .duration(task.id) }
-                }
-                .popover(isPresented: Binding(
-                    get: { activePopover == .duration(task.id) },
-                    set: { if !$0 { activePopover = nil } }
-                ), arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Stepper(
-                            value: Binding(
-                                get: { task.durationDays },
-                                set: { dur in
-                                    viewModel.updateTask(task.id, actionName: "Change Duration") { t, cal in
-                                        t.durationDays = max(1, dur)
-                                        t.endDate = cal.endDate(startingOn: t.startDate, durationDays: t.durationDays)
-                                    }
-                                }
-                            ),
-                            in: 1...365
-                        ) {
-                            Text("\(task.durationDays) working \(task.durationDays == 1 ? "day" : "days")")
-                                .font(.callout.weight(.medium))
-                        }
-                        HStack(spacing: 6) {
-                            ForEach([1, 2, 3, 5, 10], id: \.self) { preset in
-                                Button("\(preset)d") {
-                                    viewModel.updateTask(task.id, actionName: "Change Duration") { t, cal in
-                                        t.durationDays = preset
-                                        t.endDate = cal.endDate(startingOn: t.startDate, durationDays: preset)
-                                    }
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                    }
-                    .padding(12)
-                }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                viewModel.selectTask(task.id)
+                if !row.isGroup && !task.isMilestone { activePopover = .duration(task.id) }
+            }
 
             Text("\(Int(round(task.percentComplete)))%")
                 .font(.caption.monospacedDigit())
@@ -398,45 +333,6 @@ struct TaskListView: View {
                 .onTapGesture {
                     viewModel.selectTask(task.id)
                     if !row.isGroup { activePopover = .progress(task.id) }
-                }
-                .popover(isPresented: Binding(
-                    get: { activePopover == .progress(task.id) },
-                    set: { if !$0 { activePopover = nil } }
-                ), arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Progress")
-                                .font(.callout.weight(.medium))
-                            Spacer()
-                            Text("\(Int(round(task.percentComplete)))%")
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(
-                            value: Binding(
-                                get: { task.percentComplete },
-                                set: { pct in
-                                    viewModel.updateTask(task.id, actionName: "Update Progress") { t, _ in
-                                        t.percentComplete = pct
-                                    }
-                                }
-                            ),
-                            in: 0...100,
-                            step: 5
-                        )
-                        HStack(spacing: 6) {
-                            ForEach([0, 25, 50, 75, 100], id: \.self) { pct in
-                                Button("\(pct)%") {
-                                    viewModel.updateTask(task.id, actionName: "Update Progress") { t, _ in
-                                        t.percentComplete = Double(pct)
-                                    }
-                                }
-                                .controlSize(.small)
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .frame(width: 230)
                 }
         }
         .frame(height: Self.rowHeight)
@@ -559,10 +455,117 @@ struct TaskListView: View {
                 viewModel.selectTask(task.id)
                 activePopover = .relationship(task.id)
             }
-            .popover(isPresented: Binding(
-                get: { activePopover == .relationship(task.id) },
-                set: { if !$0 { activePopover = nil } }
-            ), arrowEdge: .bottom) {
+        }
+    }
+
+    @ViewBuilder
+    private func popoverContent(for pop: CellPopover) -> some View {
+        switch pop {
+        case .start(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    DatePicker(
+                        "Start Date",
+                        selection: Binding(
+                            get: { task.startDate.toDate() },
+                            set: { date in
+                                viewModel.updateTask(task.id, actionName: "Change Start Date") { t, cal in
+                                    let day = cal.snapToWorkingDay(CalendarDay(date: date, calendar: .current), forward: true)
+                                    t.startDate = day
+                                    t.endDate = t.isMilestone ? day : cal.endDate(startingOn: day, durationDays: t.durationDays)
+                                    t.isManuallyScheduled = true
+                                }
+                            }
+                        ),
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+
+                    if task.isManuallyScheduled && !task.dependencies.isEmpty {
+                        Button("Follow Dependencies (Auto)") {
+                            viewModel.updateTask(task.id, actionName: "Auto-Schedule Task") { t, _ in
+                                t.isManuallyScheduled = false
+                            }
+                            activePopover = nil
+                        }
+                        .controlSize(.small)
+                    }
+                }
+                .padding(10)
+            }
+        case .duration(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Stepper(
+                        value: Binding(
+                            get: { task.durationDays },
+                            set: { dur in
+                                viewModel.updateTask(task.id, actionName: "Change Duration") { t, cal in
+                                    t.durationDays = max(1, dur)
+                                    t.endDate = cal.endDate(startingOn: t.startDate, durationDays: t.durationDays)
+                                }
+                            }
+                        ),
+                        in: 1...365
+                    ) {
+                        Text("\(task.durationDays) working \(task.durationDays == 1 ? "day" : "days")")
+                            .font(.callout.weight(.medium))
+                    }
+                    HStack(spacing: 6) {
+                        ForEach([1, 2, 3, 5, 10], id: \.self) { preset in
+                            Button("\(preset)d") {
+                                viewModel.updateTask(task.id, actionName: "Change Duration") { t, cal in
+                                    t.durationDays = preset
+                                    t.endDate = cal.endDate(startingOn: t.startDate, durationDays: preset)
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(12)
+            }
+        case .progress(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Progress")
+                            .font(.callout.weight(.medium))
+                        Spacer()
+                        Text("\(Int(round(task.percentComplete)))%")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { task.percentComplete },
+                            set: { pct in
+                                viewModel.updateTask(task.id, actionName: "Update Progress") { t, _ in
+                                    t.percentComplete = pct
+                                }
+                            }
+                        ),
+                        in: 0...100,
+                        step: 5
+                    )
+                    HStack(spacing: 6) {
+                        ForEach([0, 25, 50, 75, 100], id: \.self) { pct in
+                            Button("\(pct)%") {
+                                viewModel.updateTask(task.id, actionName: "Update Progress") { t, _ in
+                                    t.percentComplete = Double(pct)
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(12)
+                .frame(width: 230)
+            }
+        case .relationship(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Relationships")
                         .font(.callout.weight(.semibold))

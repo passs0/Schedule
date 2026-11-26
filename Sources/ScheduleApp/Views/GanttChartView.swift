@@ -9,7 +9,19 @@ struct GanttChartView: View {
     @State private var linkDrag: LinkDragState?
     @State private var hoveredTaskID: UUID?
     @State private var scrollPosition = ScrollPosition(y: 0)
-    @State private var isSyncingFromPeer = false
+    @State private var ownScrollY: CGFloat = 0
+
+    private static let weekMonthDayFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "MMM d"
+        return df
+    }()
+
+    private static let monthYearFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "MMM yyyy"
+        return df
+    }()
 
     private struct LinkDragState {
         let sourceTaskID: UUID
@@ -49,8 +61,9 @@ struct GanttChartView: View {
             ganttControlsBar
             Divider()
             GeometryReader { viewportGeo in
-                let totalHeight = max(viewportGeo.size.height - headerHeight - 1, CGFloat(rows.count) * rowHeight)
-                ScrollView(.horizontal) {
+                if viewportGeo.size.width >= 2 {
+                    let totalHeight = max(viewportGeo.size.height - headerHeight - 1, CGFloat(rows.count) * rowHeight)
+                    ScrollView(.horizontal) {
                     VStack(spacing: 0) {
                         timelineHeader(start: bounds.start, totalDays: bounds.totalDays)
                             .frame(width: totalWidth, height: headerHeight)
@@ -75,17 +88,19 @@ struct GanttChartView: View {
                         .onScrollGeometryChange(for: CGFloat.self) { geo in
                             geo.contentOffset.y
                         } action: { _, newOffset in
-                            guard !isSyncingFromPeer else { return }
-                            if abs(verticalScrollOffset - newOffset) > 0.5 {
+                            ownScrollY = newOffset
+                            if abs(verticalScrollOffset - newOffset) > 1.0 {
                                 verticalScrollOffset = newOffset
                             }
                         }
                         .onChange(of: verticalScrollOffset) { _, newOffset in
-                            isSyncingFromPeer = true
-                            scrollPosition.scrollTo(y: newOffset)
-                            DispatchQueue.main.async { isSyncingFromPeer = false }
+                            if abs(ownScrollY - newOffset) > 1.0 {
+                                ownScrollY = newOffset
+                                scrollPosition.scrollTo(y: newOffset)
+                            }
                         }
                     }
+                }
                 }
             }
         }
@@ -174,22 +189,16 @@ struct GanttChartView: View {
                 case .days:
                     showLabel = true
                     if day.day == 1 {
-                        let df = DateFormatter()
-                        df.dateFormat = "MMM d"
-                        labelText = df.string(from: date)
+                        labelText = Self.weekMonthDayFormatter.string(from: date)
                     } else {
                         labelText = "\(day.day)"
                     }
                 case .weeks:
                     showLabel = (weekday == 2) // Mondays
-                    let df = DateFormatter()
-                    df.dateFormat = "MMM d"
-                    labelText = df.string(from: date)
+                    labelText = Self.weekMonthDayFormatter.string(from: date)
                 case .months:
                     showLabel = (day.day == 1)
-                    let df = DateFormatter()
-                    df.dateFormat = "MMM yyyy"
-                    labelText = df.string(from: date)
+                    labelText = Self.monthYearFormatter.string(from: date)
                 case .quarters:
                     showLabel = (day.day == 1 && (day.month == 1 || day.month == 4 || day.month == 7 || day.month == 10))
                     let q = ((day.month - 1) / 3) + 1
