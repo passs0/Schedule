@@ -1,0 +1,41 @@
+import Foundation
+
+public enum MPPImportError: LocalizedError, Sendable {
+    case binaryMPPRequiresXMLConversion
+
+    public var errorDescription: String? {
+        "Native binary .mpp files use Microsoft's undocumented OLE2 format, which has no native macOS/Swift SDK."
+    }
+
+    public var recoverySuggestion: String? {
+        "In Microsoft Project, choose File → Save As → XML Format (*.xml), then import the .xml file into Schedule. All tasks, hierarchy, dates, milestones, and dependencies are preserved."
+    }
+}
+
+/// Strategy and diagnostics for Microsoft Project `.mpp` binary interoperability.
+public enum MPPCompatibility {
+    /// OLE2 Compound Document magic header (`D0 CF 11 E0 A1 B1 1A E1`).
+    private static let ole2Signature: [UInt8] = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]
+
+    public static func isBinaryMPP(url: URL) -> Bool {
+        if url.pathExtension.lowercased() == "mpp" {
+            return true
+        }
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let header = (try? handle.read(upToCount: 8)) ?? Data()
+        return Array(header) == ole2Signature
+    }
+
+    public static func importFile(at url: URL) throws -> ProjectDocument {
+        if isBinaryMPP(url: url) {
+            throw MPPImportError.binaryMPPRequiresXMLConversion
+        }
+        let data = try Data(contentsOf: url)
+        let ext = url.pathExtension.lowercased()
+        if ext == "schedule" || ext == "json" {
+            return try ProjectDocument.decodeJSON(from: data)
+        }
+        return try MSPXMLInterop.importXML(from: data, fallbackName: url.deletingPathExtension().lastPathComponent)
+    }
+}

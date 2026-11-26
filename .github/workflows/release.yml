@@ -1,0 +1,43 @@
+name: Build & Publish Schedule
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify ScheduleCore
+        run: swift run ScheduleCoreVerify
+
+      - name: Build Schedule.app with dynamic Icon Composer icon
+        run: |
+          chmod +x scripts/build_app.sh
+          ./scripts/build_app.sh
+
+      - name: Package Schedule-macOS.zip
+        run: |
+          cd dist
+          ditto -c -k --keepParent Schedule.app Schedule-macOS.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Schedule-macOS
+          path: dist/Schedule-macOS.zip
+
+      - name: Publish GitHub Release on tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Schedule-macOS.zip
+          generate_release_notes: true
