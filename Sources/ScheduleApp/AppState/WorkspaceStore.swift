@@ -82,6 +82,15 @@ public final class WorkspaceStore {
         saveMetadata()
     }
 
+    public func createNewProject(template: ProjectTemplate) -> ProjectDocument {
+        let doc = template.makeDocument()
+        projects.insert(doc, at: 0)
+        selectedProjectIDsUpdate(doc.id)
+        saveToDisk(doc)
+        saveMetadata()
+        return doc
+    }
+
     public func createNewProject(name: String = "Untitled Project") -> ProjectDocument {
         let doc = ProjectDocument(
             name: name,

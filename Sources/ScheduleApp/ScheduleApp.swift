@@ -27,8 +27,8 @@ struct ScheduleApp: App {
         .defaultSize(width: 1220, height: 760)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("New Project") {
-                    _ = store.createNewProject()
+                Button("New Project…") {
+                    NotificationCenter.default.post(name: .scheduleNewProject, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: .command)
 

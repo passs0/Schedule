@@ -10,6 +10,7 @@ struct MainWindowView: View {
     @State private var showingSnapshotSheet = false
     @State private var showingCalendarManager = false
     @State private var showingExportPopover = false
+    @State private var showingTemplateChooser = false
     @State private var alertInfo: AlertInfo?
     @State private var splitRatio: CGFloat = 0.50
     @State private var dragStartRatio: CGFloat?
@@ -40,6 +41,7 @@ struct MainWindowView: View {
                 }
             }
             .modifier(MenuNotificationModifier(
+                onNewProject: { showingTemplateChooser = true },
                 onSave: { handleSave(saveAs: false) },
                 onSaveAs: { handleSave(saveAs: true) },
                 onOpen: { handleImport() },
@@ -69,6 +71,24 @@ struct MainWindowView: View {
                     CalendarManagerSheet(viewModel: vm)
                 }
             }
+            .sheet(isPresented: $showingTemplateChooser) {
+                TemplateChooserView(
+                    isModal: true,
+                    onSelectTemplate: { template in
+                        showingTemplateChooser = false
+                        _ = store.createNewProject(template: template)
+                        syncViewModel()
+                    },
+                    onImport: {
+                        showingTemplateChooser = false
+                        handleImport()
+                    },
+                    onCancel: {
+                        showingTemplateChooser = false
+                    }
+                )
+                .frame(width: 780, height: 560)
+            }
             .alert(item: $alertInfo) { info in
                 Alert(
                     title: Text(info.title),
@@ -85,8 +105,7 @@ struct MainWindowView: View {
                 store: store,
                 viewModel: viewModel,
                 onNewProject: {
-                    _ = store.createNewProject()
-                    syncViewModel()
+                    showingTemplateChooser = true
                 },
                 onSaveSnapshot: {
                     showingSnapshotSheet = true
@@ -100,10 +119,15 @@ struct MainWindowView: View {
             if let vm = viewModel {
                 detailContent(vm: vm)
             } else {
-                ContentUnavailableView(
-                    "No Project Open",
-                    systemImage: "calendar.day.timeline.leading",
-                    description: Text("Create a new project or select one from the sidebar.")
+                TemplateChooserView(
+                    isModal: false,
+                    onSelectTemplate: { template in
+                        _ = store.createNewProject(template: template)
+                        syncViewModel()
+                    },
+                    onImport: {
+                        handleImport()
+                    }
                 )
             }
         }
@@ -266,75 +290,79 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private func mainWorkspace(vm: ProjectViewModel) -> some View {
-        Group {
-            switch vm.viewMode {
-            case .listOnly:
+        GeometryReader { geo in
+            let totalWidth = max(1, geo.size.width)
+            let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
+            let dividerWidth: CGFloat = vm.viewMode == .split ? 1 : 0
+            let listWidth: CGFloat = {
+                switch vm.viewMode {
+                case .listOnly: return totalWidth
+                case .split: return clampedListWidth
+                case .ganttOnly: return 0
+                }
+            }()
+            let ganttWidth: CGFloat = {
+                switch vm.viewMode {
+                case .listOnly: return 0
+                case .split: return max(380, totalWidth - clampedListWidth - dividerWidth)
+                case .ganttOnly: return totalWidth
+                }
+            }()
+
+            HStack(spacing: 0) {
                 TaskListView(
                     viewModel: vm,
                     scrollSync: scrollSync,
                     onAddDependency: { dependencyTargetID = $0 }
                 )
-            case .ganttOnly:
+                .frame(width: listWidth)
+                .clipped()
+                .opacity(vm.viewMode == .ganttOnly ? 0 : 1)
+                .allowsHitTesting(vm.viewMode != .ganttOnly)
+
+                if vm.viewMode == .split {
+                    Rectangle()
+                        .fill(Color(nsColor: .separatorColor))
+                        .frame(width: 1)
+                        .overlay {
+                            Color.clear
+                                .frame(width: 8)
+                                .contentShape(Rectangle())
+                                .onHover { hovering in
+                                    if hovering {
+                                        NSCursor.resizeLeftRight.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                                .gesture(
+                                    DragGesture(minimumDistance: 1)
+                                        .onChanged { value in
+                                            let base = dragStartRatio ?? splitRatio
+                                            if dragStartRatio == nil { dragStartRatio = base }
+                                            let nextRatio = base + (value.translation.width / totalWidth)
+                                            let minRatio = 340 / totalWidth
+                                            let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
+                                            splitRatio = min(max(nextRatio, minRatio), maxRatio)
+                                        }
+                                        .onEnded { _ in
+                                            dragStartRatio = nil
+                                        }
+                                )
+                        }
+                }
+
                 GanttChartView(
                     viewModel: vm,
                     scrollSync: scrollSync
                 )
-            case .split:
-                GeometryReader { geo in
-                    let totalWidth = max(1, geo.size.width)
-                    let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
-                    let ganttWidth = max(380, totalWidth - clampedListWidth - 1)
-
-                    HStack(spacing: 0) {
-                        TaskListView(
-                            viewModel: vm,
-                            scrollSync: scrollSync,
-                            onAddDependency: { dependencyTargetID = $0 }
-                        )
-                        .frame(width: clampedListWidth)
-                        .clipped()
-
-                        Rectangle()
-                            .fill(Color(nsColor: .separatorColor))
-                            .frame(width: 1)
-                            .overlay {
-                                Color.clear
-                                    .frame(width: 8)
-                                    .contentShape(Rectangle())
-                                    .onHover { hovering in
-                                        if hovering {
-                                            NSCursor.resizeLeftRight.push()
-                                        } else {
-                                            NSCursor.pop()
-                                        }
-                                    }
-                                    .gesture(
-                                        DragGesture(minimumDistance: 1)
-                                            .onChanged { value in
-                                                let base = dragStartRatio ?? splitRatio
-                                                if dragStartRatio == nil { dragStartRatio = base }
-                                                let nextRatio = base + (value.translation.width / totalWidth)
-                                                let minRatio = 340 / totalWidth
-                                                let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
-                                                splitRatio = min(max(nextRatio, minRatio), maxRatio)
-                                            }
-                                            .onEnded { _ in
-                                                dragStartRatio = nil
-                                            }
-                                    )
-                            }
-
-                        GanttChartView(
-                            viewModel: vm,
-                            scrollSync: scrollSync
-                        )
-                        .frame(width: ganttWidth)
-                        .clipped()
-                    }
-                }
+                .frame(width: ganttWidth)
+                .clipped()
+                .opacity(vm.viewMode == .listOnly ? 0 : 1)
+                .allowsHitTesting(vm.viewMode != .listOnly)
             }
+            .animation(.snappy(duration: 0.24, extraBounce: 0), value: vm.viewMode)
         }
-        .animation(.snappy(duration: 0.22, extraBounce: 0), value: vm.viewMode)
     }
 
     private func syncViewModel() {
@@ -393,6 +421,7 @@ struct MainWindowView: View {
 }
 
 extension Notification.Name {
+    static let scheduleNewProject = Notification.Name("scheduleNewProject")
     static let scheduleSaveDocument = Notification.Name("scheduleSaveDocument")
     static let scheduleSaveDocumentAs = Notification.Name("scheduleSaveDocumentAs")
     static let scheduleOpenDocument = Notification.Name("scheduleOpenDocument")
@@ -410,6 +439,7 @@ private struct IdentifiableUUID: Identifiable {
 }
 
 private struct MenuNotificationModifier: ViewModifier {
+    let onNewProject: () -> Void
     let onSave: () -> Void
     let onSaveAs: () -> Void
     let onOpen: () -> Void
@@ -423,6 +453,7 @@ private struct MenuNotificationModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .onReceive(NotificationCenter.default.publisher(for: .scheduleNewProject)) { _ in onNewProject() }
             .onReceive(NotificationCenter.default.publisher(for: .scheduleSaveDocument)) { _ in onSave() }
             .onReceive(NotificationCenter.default.publisher(for: .scheduleSaveDocumentAs)) { _ in onSaveAs() }
             .onReceive(NotificationCenter.default.publisher(for: .scheduleOpenDocument)) { _ in onOpen() }
