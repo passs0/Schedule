@@ -23,7 +23,7 @@
 - **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with Days, Weeks, Months, and Quarters zoom and one-click Critical Path highlighting.
 - **Working calendars & holidays** — Customize working days per task or project and import public or team holidays from Apple Calendar or `.ics` files.
 - **Project versions & diff** — Save schedule snapshots and compare timeline, duration, and dependency changes across revisions.
-- **Microsoft Project XML interop** — Import and export MSPDI `.xml` files with hierarchy, dates, durations, milestones, completion percentages, and dependencies intact.
+- **Microsoft Project XML & spreadsheet import** — Import and export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
 - **Formula-driven Excel & Numbers export** — Export live-formula `.xlsx` workbooks (including summary rollups and dependency sheets) or convert straight into native `.numbers` documents via Apple Numbers.
 
 ## How it compares
@@ -48,7 +48,7 @@
 
 ## Install
 
-Download `Schedule-macOS.zip` from the [latest release](https://github.com/passs0/Schedule/releases/latest), unzip it, and move `Schedule.app` to `/Applications`.
+Download `Schedule-macOS.dmg` from the [latest release](https://github.com/passs0/Schedule/releases/latest), open it, and drag `Schedule.app` into `Applications`.
 
 To build from source on macOS 15+:
 
