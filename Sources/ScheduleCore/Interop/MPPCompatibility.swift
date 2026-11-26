@@ -28,12 +28,12 @@ public enum MPPCompatibility {
     }
 
     public static func importFile(at url: URL) throws -> ProjectDocument {
-        if isBinaryMPP(url: url) {
-            throw MPPImportError.binaryMPPRequiresXMLConversion
-        }
         let data = try Data(contentsOf: url)
         let ext = url.pathExtension.lowercased()
         let baseName = url.deletingPathExtension().lastPathComponent
+        if ext == "mpp" || isBinaryMPP(url: url) {
+            return try MPPBinaryParser.parse(data: data, fallbackName: baseName)
+        }
         if ext == "schedule" || ext == "json" {
             return try ProjectDocument.decodeJSON(from: data)
         }

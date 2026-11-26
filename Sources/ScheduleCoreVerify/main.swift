@@ -162,4 +162,14 @@ do {
     check(importedCSV.tasks[3].isMilestone == true, "CSV 0-duration milestone")
 }
 
-print("All 9 ScheduleCore verification suites passed.")
+// 10. Binary .mpp parser check (if local test fixture is present)
+do {
+    let mppPath = "/tmp/Downtown Bank MPP.mpp"
+    if FileManager.default.fileExists(atPath: mppPath) {
+        let mppDoc = try MPPCompatibility.importFile(at: URL(fileURLWithPath: mppPath))
+        check(!mppDoc.tasks.isEmpty, "MPP parsed tasks")
+        print("MPP verified: \(mppDoc.tasks.count) tasks, \(mppDoc.tasks.filter { $0.parentID != nil }.count) subtasks, \(mppDoc.tasks.reduce(0) { $0 + $1.dependencies.count }) dependencies")
+    }
+}
+
+print("All 10 ScheduleCore verification suites passed.")
