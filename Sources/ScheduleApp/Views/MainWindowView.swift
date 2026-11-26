@@ -42,7 +42,7 @@ struct MainWindowView: View {
                         showingTemplateChooser = true
                     }
                 )
-                .frame(width: 580, height: 420)
+                .frame(width: 560, height: 480)
             }
         }
         .background(WindowSizeController(isWorkspaceOpen: viewModel != nil))
@@ -470,9 +470,9 @@ private struct WindowSizeController: NSViewRepresentable {
                 let y = visible.midY - targetH / 2
                 window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: true)
             } else {
-                window.minSize = NSSize(width: 580, height: 420)
-                let targetW: CGFloat = 580
-                let targetH: CGFloat = 420
+                window.minSize = NSSize(width: 560, height: 480)
+                let targetW: CGFloat = 560
+                let targetH: CGFloat = 480
                 let x = visible.midX - targetW / 2
                 let y = visible.midY - targetH / 2
                 window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: false)

@@ -11,18 +11,26 @@ struct WelcomeView: View {
 
     @State private var hoveredProjectID: UUID?
 
+    private static let modifiedFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        df.doesRelativeDateFormatting = true
+        return df
+    }()
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: 20)
 
-            VStack(spacing: 22) {
+            VStack(spacing: 18) {
                 VStack(spacing: 8) {
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable()
-                        .frame(width: 72, height: 72)
+                        .frame(width: 60, height: 60)
 
                     Text("Welcome to Schedule")
-                        .font(.title.weight(.semibold))
+                        .font(.title2.weight(.semibold))
 
                     Text("Open an existing project, import a task list, or create a new schedule.")
                         .font(.callout)
@@ -38,7 +46,7 @@ struct WelcomeView: View {
                             .padding(.horizontal, 4)
 
                         VStack(spacing: 0) {
-                            let visibleRecent = Array(recentProjects.prefix(5))
+                            let visibleRecent = Array(recentProjects.prefix(4))
                             ForEach(visibleRecent) { project in
                                 Button {
                                     onOpenProject(project.id)
@@ -49,7 +57,7 @@ struct WelcomeView: View {
                                             .foregroundStyle(ScheduleTheme.accent)
                                             .frame(width: 22)
 
-                                        VStack(alignment: .leading, spacing: 1) {
+                                        VStack(alignment: .leading, spacing: 2) {
                                             Text(project.name)
                                                 .font(.callout.weight(.medium))
                                                 .foregroundStyle(.primary)
@@ -60,12 +68,12 @@ struct WelcomeView: View {
 
                                         Spacer()
 
-                                        Text(project.modifiedAt, style: .relative)
+                                        Text(Self.modifiedFormatter.string(from: project.modifiedAt))
                                             .font(.caption2)
                                             .foregroundStyle(.tertiary)
                                     }
                                     .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 9)
                                     .background(
                                         hoveredProjectID == project.id
                                             ? Color.primary.opacity(0.05)
@@ -89,33 +97,34 @@ struct WelcomeView: View {
                                 .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
                         )
                     }
-                    .frame(maxWidth: 420)
-                }
-
-                HStack(spacing: 12) {
-                    Button {
-                        onOpenFile()
-                    } label: {
-                        Label("Open File…", systemImage: "folder")
-                            .frame(minWidth: 130)
-                    }
-                    .controlSize(.large)
-                    .keyboardShortcut("o", modifiers: .command)
-
-                    Button {
-                        onNewDocument()
-                    } label: {
-                        Label("New Document…", systemImage: "plus")
-                            .frame(minWidth: 145)
-                    }
-                    .controlSize(.large)
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
+                    .frame(maxWidth: 430)
                 }
             }
-            .padding(28)
+            .padding(.horizontal, 32)
 
-            Spacer()
+            Spacer(minLength: 20)
+
+            HStack(spacing: 12) {
+                Button {
+                    onOpenFile()
+                } label: {
+                    Label("Open File…", systemImage: "folder")
+                        .frame(minWidth: 136)
+                }
+                .controlSize(.large)
+                .keyboardShortcut("o", modifiers: .command)
+
+                Button {
+                    onNewDocument()
+                } label: {
+                    Label("New Document…", systemImage: "plus")
+                        .frame(minWidth: 148)
+                }
+                .controlSize(.large)
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(.bottom, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))

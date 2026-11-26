@@ -23,7 +23,7 @@ struct ScheduleApp: App {
             MainWindowView(store: store)
                 .tint(ScheduleTheme.accent)
         }
-        .defaultSize(width: 580, height: 420)
+        .defaultSize(width: 560, height: 480)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Project…") {
