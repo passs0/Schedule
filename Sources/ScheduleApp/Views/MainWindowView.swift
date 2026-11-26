@@ -464,7 +464,13 @@ private struct WindowSizeController: NSViewRepresentable {
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             if open {
                 window.minSize = NSSize(width: 960, height: 600)
-                window.setFrame(visible, display: true, animate: true)
+                window.setFrame(visible, display: true, animate: false)
+                window.alphaValue = 0.88
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = 0.16
+                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    window.animator().alphaValue = 1.0
+                }
             } else {
                 window.minSize = NSSize(width: 560, height: 480)
                 let targetW: CGFloat = 560
