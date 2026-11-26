@@ -1,21 +1,23 @@
-<div align="center">
-
-<img src="assets/icon_mac.png" width="128" alt="Schedule icon" />
-
-<h1>Schedule</h1>
-
-<p>A native macOS project scheduling app with plain-English dependencies, Gantt charts, and formula-driven Excel/Numbers export.</p>
-
-<p>
-  <a href="https://github.com/passs0/Schedule/releases/latest">
-    <img src="https://img.shields.io/github/v/release/passs0/Schedule?style=flat-square&label=Latest%20Release" alt="Latest Release" />
-  </a>
-  <img src="https://img.shields.io/badge/macOS-15.0%2B-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 15.0+" />
+<p align="center">
+  <img src="assets/icon_mac.png" width="160" height="160" alt="Schedule Icon" />
 </p>
 
-<img src="assets/preview.png" width="780" alt="Schedule preview" />
+<h1 align="center">Schedule</h1>
 
-</div>
+<p align="center">
+  A native macOS project scheduling app with plain-English dependencies, Gantt charts, and formula-driven Excel/Numbers export.
+</p>
+
+<p align="center">
+  <a href="https://github.com/passs0/Schedule/releases/latest"><img src="https://img.shields.io/github/v/release/passs0/Schedule?label=Latest%20Release&color=007AFF" alt="Latest Release" /></a>
+  <img src="https://img.shields.io/badge/macOS-15.0%2B%20%7C%20Apple%20Silicon-black?logo=apple" alt="macOS 15.0+" />
+</p>
+
+<p align="center">
+  <img src="assets/preview.png" width="760" alt="Schedule" />
+</p>
+
+---
 
 ## What it does
 
@@ -57,6 +59,4 @@ chmod +x scripts/build_app.sh
 ./scripts/build_app.sh
 ```
 
-## Built with Google Antigravity
-
-This project was built using [Google Antigravity](https://antigravity.google).
+**AI scope:** All code, assets, and documentation were generated with [Google Antigravity](https://antigravity.google); human involvement was limited to direction and hands-on testing.
