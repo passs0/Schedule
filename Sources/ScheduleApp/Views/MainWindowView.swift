@@ -96,8 +96,11 @@ struct MainWindowView: View {
                 TemplateChooserView(
                     onSelectTemplate: { template in
                         showingTemplateChooser = false
-                        _ = store.createNewProject(template: template)
-                        syncViewModel()
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(220))
+                            _ = store.createNewProject(template: template)
+                            syncViewModel()
+                        }
                     },
                     onCancel: {
                         showingTemplateChooser = false
