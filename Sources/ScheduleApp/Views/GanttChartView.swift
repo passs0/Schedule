@@ -8,6 +8,7 @@ struct GanttChartView: View {
     @State private var dragState: BarDragState?
     @State private var linkDrag: LinkDragState?
     @State private var hoveredTaskID: UUID?
+    @State private var viewportHeight: CGFloat = 600
 
     private static let weekMonthDayFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -54,37 +55,40 @@ struct GanttChartView: View {
         let bounds = timelineBounds
         let totalWidth = CGFloat(bounds.totalDays) * dayWidth
         let rows = viewModel.visibleRows
+        let totalHeight = max(viewportHeight - headerHeight - 1, CGFloat(rows.count) * rowHeight)
 
         VStack(spacing: 0) {
             ganttControlsBar
             Divider()
-            GeometryReader { viewportGeo in
-                if viewportGeo.size.width >= 2 {
-                    let totalHeight = max(viewportGeo.size.height - headerHeight - 1, CGFloat(rows.count) * rowHeight)
-                    ScrollView(.horizontal) {
-                    VStack(spacing: 0) {
-                        timelineHeader(start: bounds.start, totalDays: bounds.totalDays)
-                            .frame(width: totalWidth, height: headerHeight)
-                        Divider()
+            ScrollView(.horizontal) {
+                VStack(spacing: 0) {
+                    timelineHeader(start: bounds.start, totalDays: bounds.totalDays)
+                        .frame(width: totalWidth, height: headerHeight)
+                    Divider()
 
-                        ScrollView(.vertical) {
-                            ZStack(alignment: .topLeading) {
-                                ganttCanvas(
-                                    rows: rows,
-                                    start: bounds.start,
-                                    totalDays: bounds.totalDays,
-                                    width: totalWidth,
-                                    height: totalHeight
-                                )
+                    ScrollView(.vertical) {
+                        ZStack(alignment: .topLeading) {
+                            ganttCanvas(
+                                rows: rows,
+                                start: bounds.start,
+                                totalDays: bounds.totalDays,
+                                width: totalWidth,
+                                height: totalHeight
+                            )
+                            .frame(width: totalWidth, height: totalHeight)
+
+                            interactiveOverlay(rows: rows, timelineStart: bounds.start)
                                 .frame(width: totalWidth, height: totalHeight)
-
-                                interactiveOverlay(rows: rows, timelineStart: bounds.start)
-                                    .frame(width: totalWidth, height: totalHeight)
-                            }
-                            .background(ScrollSyncAnchor(pane: .gantt, state: scrollSync))
                         }
+                        .background(ScrollSyncAnchor(pane: .gantt, state: scrollSync))
                     }
                 }
+            }
+            .onGeometryChange(for: CGFloat.self) { geo in
+                geo.size.height
+            } action: { _, newHeight in
+                if abs(viewportHeight - newHeight) > 0.5 {
+                    viewportHeight = newHeight
                 }
             }
         }
@@ -435,96 +439,125 @@ struct GanttChartView: View {
     // MARK: - Interactive Gesture Overlay
 
     private func interactiveOverlay(rows: [VisibleTaskRow], timelineStart: CalendarDay) -> some View {
-        ZStack(alignment: .topLeading) {
-            ForEach(Array(rows.enumerated()), id: \.element.id) { idx, row in
-                let rect = barRect(for: row.task, rowIndex: idx, timelineStart: timelineStart)
-                Color.clear
-                    .frame(width: max(20, rect.width), height: rowHeight)
-                    .contentShape(Rectangle())
-                    .offset(x: rect.minX, y: CGFloat(idx) * rowHeight)
-                    .onTapGesture {
-                        viewModel.selectTask(row.id)
-                    }
-                    .gesture(
-                        row.isGroup ? nil : DragGesture(minimumDistance: 4)
-                            .onChanged { value in
+        let activeHandleRow: (index: Int, row: VisibleTaskRow, rect: CGRect)? = {
+            let targetID = linkDrag?.sourceTaskID ?? hoveredTaskID ?? viewModel.selectedTaskID
+            guard let targetID,
+                  let idx = rows.firstIndex(where: { $0.id == targetID }),
+                  !rows[idx].isGroup else { return nil }
+            let row = rows[idx]
+            return (idx, row, barRect(for: row.task, rowIndex: idx, timelineStart: timelineStart))
+        }()
+
+        return ZStack(alignment: .topLeading) {
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture()
+                        .onEnded { value in
+                            let idx = Int(floor(value.location.y / rowHeight))
+                            if idx >= 0 && idx < rows.count {
+                                viewModel.selectTask(rows[idx].id)
+                            }
+                        }
+                )
+                .gesture(
+                    DragGesture(minimumDistance: 4)
+                        .onChanged { value in
+                            let rowIdx = Int(floor(value.startLocation.y / rowHeight))
+                            guard rowIdx >= 0 && rowIdx < rows.count else { return }
+                            let row = rows[rowIdx]
+                            guard !row.isGroup else { return }
+
+                            if let existing = dragState, existing.taskID == row.id {
                                 let deltaDays = Int(round(value.translation.width / dayWidth))
-                                let isResize = !row.task.isMilestone && value.startLocation.x > max(12, rect.width - 10)
+                                dragState = BarDragState(taskID: row.id, mode: existing.mode, dayDelta: deltaDays)
+                            } else {
+                                let rect = barRect(for: row.task, rowIndex: rowIdx, timelineStart: timelineStart)
+                                guard value.startLocation.x >= rect.minX - 6 && value.startLocation.x <= rect.maxX + 6 else { return }
+                                let deltaDays = Int(round(value.translation.width / dayWidth))
+                                let isResize = !row.task.isMilestone && value.startLocation.x > max(rect.minX + 12, rect.maxX - 10)
                                 dragState = BarDragState(
                                     taskID: row.id,
                                     mode: isResize ? .resizeDuration : .move,
                                     dayDelta: deltaDays
                                 )
                             }
-                            .onEnded { value in
-                                let deltaDays = Int(round(value.translation.width / dayWidth))
-                                let mode = dragState?.mode ?? .move
-                                dragState = nil
-                                guard deltaDays != 0 else { return }
+                        }
+                        .onEnded { value in
+                            guard let currentDrag = dragState else { return }
+                            dragState = nil
+                            let deltaDays = Int(round(value.translation.width / dayWidth))
+                            guard deltaDays != 0 else { return }
 
-                                switch mode {
-                                case .move:
-                                    viewModel.updateTask(row.id, actionName: "Reschedule Task") { task, cal in
-                                        let shifted = cal.snapToWorkingDay(task.startDate.addingCalendarDays(deltaDays), forward: deltaDays >= 0)
-                                        task.startDate = shifted
-                                        task.endDate = task.isMilestone ? shifted : cal.endDate(startingOn: shifted, durationDays: task.durationDays)
-                                        task.isManuallyScheduled = true
-                                    }
-                                case .resizeDuration:
-                                    viewModel.updateTask(row.id, actionName: "Resize Duration") { task, cal in
-                                        let newDur = max(1, task.durationDays + deltaDays)
-                                        task.durationDays = newDur
-                                        task.endDate = cal.endDate(startingOn: task.startDate, durationDays: newDur)
-                                    }
+                            switch currentDrag.mode {
+                            case .move:
+                                viewModel.updateTask(currentDrag.taskID, actionName: "Reschedule Task") { task, cal in
+                                    let shifted = cal.snapToWorkingDay(task.startDate.addingCalendarDays(deltaDays), forward: deltaDays >= 0)
+                                    task.startDate = shifted
+                                    task.endDate = task.isMilestone ? shifted : cal.endDate(startingOn: shifted, durationDays: task.durationDays)
+                                    task.isManuallyScheduled = true
+                                }
+                            case .resizeDuration:
+                                viewModel.updateTask(currentDrag.taskID, actionName: "Resize Duration") { task, cal in
+                                    let newDur = max(1, task.durationDays + deltaDays)
+                                    task.durationDays = newDur
+                                    task.endDate = cal.endDate(startingOn: task.startDate, durationDays: newDur)
                                 }
                             }
-                    )
-                    .onHover { hovering in
-                        if hovering {
-                            hoveredTaskID = row.id
-                        } else if hoveredTaskID == row.id {
+                        }
+                )
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let location):
+                        let idx = Int(floor(location.y / rowHeight))
+                        let nextID = (idx >= 0 && idx < rows.count) ? rows[idx].id : nil
+                        if hoveredTaskID != nextID {
+                            hoveredTaskID = nextID
+                        }
+                    case .ended:
+                        if hoveredTaskID != nil {
                             hoveredTaskID = nil
                         }
                     }
-
-                // Direct bar-to-bar link handle (drag to another task to link)
-                if !row.isGroup && (hoveredTaskID == row.id || viewModel.selectedTaskID == row.id || linkDrag?.sourceTaskID == row.id) {
-                    let handleX = rect.maxX + 8
-                    let handleY = rect.midY
-                    Circle()
-                        .fill(ScheduleTheme.accent)
-                        .frame(width: 9, height: 9)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
-                        .offset(x: handleX - 10, y: handleY - 10)
-                        .help("Drag to another task to link")
-                        .gesture(
-                            DragGesture(minimumDistance: 2, coordinateSpace: .named("GanttOverlay"))
-                                .onChanged { value in
-                                    linkDrag = LinkDragState(
-                                        sourceTaskID: row.id,
-                                        startPoint: CGPoint(x: rect.maxX, y: rect.midY),
-                                        currentPoint: value.location
-                                    )
-                                }
-                                .onEnded { value in
-                                    let targetRowIndex = Int(floor(value.location.y / rowHeight))
-                                    if targetRowIndex >= 0 && targetRowIndex < rows.count {
-                                        let targetRow = rows[targetRowIndex]
-                                        if !targetRow.isGroup && targetRow.id != row.id {
-                                            viewModel.addDependency(
-                                                to: targetRow.id,
-                                                predecessorID: row.id,
-                                                type: .finishToStart,
-                                                lagDays: 0
-                                            )
-                                        }
-                                    }
-                                    linkDrag = nil
-                                }
-                        )
                 }
+
+            // Direct bar-to-bar link handle (only 1 view for the active/hovered task)
+            if let active = activeHandleRow {
+                let handleX = active.rect.maxX + 8
+                let handleY = active.rect.midY
+                Circle()
+                    .fill(ScheduleTheme.accent)
+                    .frame(width: 9, height: 9)
+                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                    .frame(width: 20, height: 20)
+                    .contentShape(Rectangle())
+                    .offset(x: handleX - 10, y: handleY - 10)
+                    .help("Drag to another task to link")
+                    .gesture(
+                        DragGesture(minimumDistance: 2, coordinateSpace: .named("GanttOverlay"))
+                            .onChanged { value in
+                                linkDrag = LinkDragState(
+                                    sourceTaskID: active.row.id,
+                                    startPoint: CGPoint(x: active.rect.maxX, y: active.rect.midY),
+                                    currentPoint: value.location
+                                )
+                            }
+                            .onEnded { value in
+                                let targetRowIndex = Int(floor(value.location.y / rowHeight))
+                                if targetRowIndex >= 0 && targetRowIndex < rows.count {
+                                    let targetRow = rows[targetRowIndex]
+                                    if !targetRow.isGroup && targetRow.id != active.row.id {
+                                        viewModel.addDependency(
+                                            to: targetRow.id,
+                                            predecessorID: active.row.id,
+                                            type: .finishToStart,
+                                            lagDays: 0
+                                        )
+                                    }
+                                }
+                                linkDrag = nil
+                            }
+                    )
             }
 
             // Live preview connector line while dragging from a link handle

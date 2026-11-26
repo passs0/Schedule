@@ -266,79 +266,75 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private func mainWorkspace(vm: ProjectViewModel) -> some View {
-        GeometryReader { geo in
-            let totalWidth = max(1, geo.size.width)
-            let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
-            let dividerWidth: CGFloat = vm.viewMode == .split ? 1 : 0
-            let listWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return totalWidth
-                case .split: return clampedListWidth
-                case .ganttOnly: return 0
-                }
-            }()
-            let ganttWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return 0
-                case .split: return max(380, totalWidth - clampedListWidth - dividerWidth)
-                case .ganttOnly: return totalWidth
-                }
-            }()
-
-            HStack(spacing: 0) {
+        Group {
+            switch vm.viewMode {
+            case .listOnly:
                 TaskListView(
                     viewModel: vm,
                     scrollSync: scrollSync,
                     onAddDependency: { dependencyTargetID = $0 }
                 )
-                .frame(width: listWidth)
-                .clipped()
-                .opacity(vm.viewMode == .ganttOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .ganttOnly)
-
-                if vm.viewMode == .split {
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor))
-                        .frame(width: 1)
-                        .overlay {
-                            Color.clear
-                                .frame(width: 8)
-                                .contentShape(Rectangle())
-                                .onHover { hovering in
-                                    if hovering {
-                                        NSCursor.resizeLeftRight.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
-                                }
-                                .gesture(
-                                    DragGesture(minimumDistance: 1)
-                                        .onChanged { value in
-                                            let base = dragStartRatio ?? splitRatio
-                                            if dragStartRatio == nil { dragStartRatio = base }
-                                            let nextRatio = base + (value.translation.width / totalWidth)
-                                            let minRatio = 340 / totalWidth
-                                            let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
-                                            splitRatio = min(max(nextRatio, minRatio), maxRatio)
-                                        }
-                                        .onEnded { _ in
-                                            dragStartRatio = nil
-                                        }
-                                )
-                        }
-                }
-
+            case .ganttOnly:
                 GanttChartView(
                     viewModel: vm,
                     scrollSync: scrollSync
                 )
-                .frame(width: ganttWidth)
-                .clipped()
-                .opacity(vm.viewMode == .listOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .listOnly)
+            case .split:
+                GeometryReader { geo in
+                    let totalWidth = max(1, geo.size.width)
+                    let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
+                    let ganttWidth = max(380, totalWidth - clampedListWidth - 1)
+
+                    HStack(spacing: 0) {
+                        TaskListView(
+                            viewModel: vm,
+                            scrollSync: scrollSync,
+                            onAddDependency: { dependencyTargetID = $0 }
+                        )
+                        .frame(width: clampedListWidth)
+                        .clipped()
+
+                        Rectangle()
+                            .fill(Color(nsColor: .separatorColor))
+                            .frame(width: 1)
+                            .overlay {
+                                Color.clear
+                                    .frame(width: 8)
+                                    .contentShape(Rectangle())
+                                    .onHover { hovering in
+                                        if hovering {
+                                            NSCursor.resizeLeftRight.push()
+                                        } else {
+                                            NSCursor.pop()
+                                        }
+                                    }
+                                    .gesture(
+                                        DragGesture(minimumDistance: 1)
+                                            .onChanged { value in
+                                                let base = dragStartRatio ?? splitRatio
+                                                if dragStartRatio == nil { dragStartRatio = base }
+                                                let nextRatio = base + (value.translation.width / totalWidth)
+                                                let minRatio = 340 / totalWidth
+                                                let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
+                                                splitRatio = min(max(nextRatio, minRatio), maxRatio)
+                                            }
+                                            .onEnded { _ in
+                                                dragStartRatio = nil
+                                            }
+                                    )
+                            }
+
+                        GanttChartView(
+                            viewModel: vm,
+                            scrollSync: scrollSync
+                        )
+                        .frame(width: ganttWidth)
+                        .clipped()
+                    }
+                }
             }
-            .animation(.snappy(duration: 0.26, extraBounce: 0), value: vm.viewMode)
         }
+        .animation(.snappy(duration: 0.22, extraBounce: 0), value: vm.viewMode)
     }
 
     private func syncViewModel() {

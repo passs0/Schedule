@@ -51,6 +51,9 @@ struct TaskListView: View {
     }()
 
     var body: some View {
+        let rows = filteredRows
+        let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
+
         VStack(spacing: 0) {
             listSummaryBar
             Divider()
@@ -58,9 +61,8 @@ struct TaskListView: View {
             Divider()
             ScrollView(.vertical) {
                 LazyVStack(spacing: 0) {
-                    ForEach(filteredRows) { row in
-                        taskRow(row)
-                            .transition(.opacity)
+                    ForEach(rows) { row in
+                        taskRow(row, taskMap: taskMap)
                             .onDrag {
                                 draggingTaskID = row.id
                                 return NSItemProvider(object: row.id.uuidString as NSString)
@@ -178,7 +180,7 @@ struct TaskListView: View {
     }
 
     @ViewBuilder
-    private func taskRow(_ row: VisibleTaskRow) -> some View {
+    private func taskRow(_ row: VisibleTaskRow, taskMap: [UUID: ScheduleTask]) -> some View {
         let task = row.task
         let isSelected = viewModel.selectedTaskID == task.id
 
@@ -243,14 +245,14 @@ struct TaskListView: View {
                     Image(systemName: "link")
                         .font(.caption2)
                         .foregroundStyle(isSelected ? AnyShapeStyle(.white.opacity(0.85)) : AnyShapeStyle(.tertiary))
-                        .help(dependencyTooltip(for: task))
+                        .help(dependencyTooltip(for: task, taskMap: taskMap))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
 
             if showExtendedColumns {
-                relationshipCell(for: task, isGroup: row.isGroup, isSelected: isSelected)
+                relationshipCell(for: task, isGroup: row.isGroup, isSelected: isSelected, taskMap: taskMap)
                     .frame(width: 240, alignment: .leading)
                     .padding(.horizontal, 10)
 
@@ -345,8 +347,8 @@ struct TaskListView: View {
                 viewModel.addTask(after: task.id, isMilestone: true, asSubtask: false)
             }
             Divider()
-            if !row.isGroup, let prev = viewModel.previousLinkableTask(before: task.id) {
-                Button("Start After \"\(prev.title)\"") {
+            if !row.isGroup {
+                Button("Start After Previous Task") {
                     viewModel.linkToPreviousTask(task.id)
                 }
             }
@@ -387,22 +389,20 @@ struct TaskListView: View {
         }
     }
 
-    private func dependencyTooltip(for task: ScheduleTask) -> String {
-        let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
-        return task.dependencies.map { dep in
+    private func dependencyTooltip(for task: ScheduleTask, taskMap: [UUID: ScheduleTask]) -> String {
+        task.dependencies.map { dep in
             let predName = taskMap[dep.predecessorID]?.title ?? "Unknown"
             return HumanDependency.describe(dep, predecessorName: predName)
         }.joined(separator: "\n")
     }
 
     @ViewBuilder
-    private func relationshipCell(for task: ScheduleTask, isGroup: Bool, isSelected: Bool) -> some View {
+    private func relationshipCell(for task: ScheduleTask, isGroup: Bool, isSelected: Bool, taskMap: [UUID: ScheduleTask]) -> some View {
         if isGroup {
             Text("—")
                 .font(.caption)
                 .foregroundStyle(isSelected ? Color.white.opacity(0.5) : Color.secondary.opacity(0.4))
         } else {
-            let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
             Group {
                 if task.dependencies.isEmpty {
                     Text("Add link…")
@@ -431,7 +431,7 @@ struct TaskListView: View {
                                 .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Color.secondary)
                         }
                     }
-                    .help(dependencyTooltip(for: task))
+                    .help(dependencyTooltip(for: task, taskMap: taskMap))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
