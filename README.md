@@ -26,7 +26,7 @@
 - **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with synchronized Split View scrolling, Days/Weeks/Months/Quarters zoom, Critical Path highlighting, and full `⌘Z` / `⇧⌘Z` Undo/Redo.
 - **Working calendars & holidays** — Customize working days per task, team, or project and import public or team holidays from Apple Calendar or `.ics` files.
 - **Project versions & diff** — Save schedule snapshots and compare timeline, duration, and dependency changes across revisions.
-- **Microsoft Project XML & spreadsheet import** — Import and export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
+- **Microsoft Project `.mpp` / `.xml` & spreadsheet import** — Directly import binary Microsoft Project `.mpp` files (MPP14+ / Project 2010 and later) and import/export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
 - **Formula-driven Excel & Numbers export** — Export live-formula `.xlsx` workbooks (including summary rollups and dependency sheets) or convert straight into native `.numbers` documents via Apple Numbers.
 
 ## How it compares
@@ -39,12 +39,12 @@
 | **Version snapshots & diff** | **Yes** | Baselines | Baselines | Snapshots | No |
 | **Formula-driven `.xlsx` / `.numbers`** | **Yes** | Static export | No formulas | No formulas | CSV / static |
 | **MS Project `.xml` (MSPDI) interop** | **Yes** | Yes | Pro only | Yes | Yes |
-| **Direct binary `.mpp` import** | No (`.xml` required) | **Yes** | **Pro only** | **Yes** | Partial |
+| **Direct binary `.mpp` import** | **Yes** (MPP14+) | **Yes** | **Pro only** | **Yes** | Partial |
 | **Resource leveling & cost tracking** | No | **Yes** | **Yes** | **Yes** | Basic |
 | **Price** | **Free / Open source** | Subscription | Paid | Subscription | Free / Open source |
 
 **Where Schedule falls short:**
-- **No direct binary `.mpp` parser** — Microsoft's proprietary OLE2 `.mpp` format isn't supported directly; export from Microsoft Project via *File → Save As → XML Format (`.xml`)* first.
+- **MPP14+ binary scope** — Direct `.mpp` import supports Project 2010 and later (MPP14+); legacy pre-2010 or encrypted `.mpp` files must be exported from Microsoft Project via *File → Save As → XML Format (`.xml`)* first.
 - **No resource leveling or cost/budget tracking** — Schedule focuses on tasks, dependencies, calendars, milestones, and timelines rather than staff allocation or earned-value accounting.
 - **Single-user local documents** — Saves `.schedule` files locally with no real-time cloud co-editing.
 - **macOS 15+ only** — Native `.numbers` export also requires Apple Numbers to be installed (though `.xlsx` exports work standalone and open cleanly in Numbers).
@@ -59,6 +59,10 @@ To build from source on macOS 15+:
 chmod +x scripts/build_app.sh
 ./scripts/build_app.sh
 ```
+
+## Credits
+
+- Pure-Swift MPP14+ binary layout and `Var2Data` / `TBkndCons` parsing in [`MPPBinaryParser.swift`](Sources/ScheduleCore/Interop/MPPBinaryParser.swift) are ported from [`msp-export`](https://github.com/andrewbergsma/msp-export) by Andrew Bergsma (MIT License).
 
 ## AI Scope
 
