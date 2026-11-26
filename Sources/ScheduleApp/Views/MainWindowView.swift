@@ -11,7 +11,7 @@ struct MainWindowView: View {
     @State private var showingCalendarManager = false
     @State private var showingExportPopover = false
     @State private var alertInfo: AlertInfo?
-    @State private var splitRatio: CGFloat = 0.48
+    @State private var splitRatio: CGFloat = 0.50
     @State private var dragStartRatio: CGFloat?
 
     @Environment(\.undoManager) private var undoManager
@@ -269,17 +269,32 @@ struct MainWindowView: View {
         GeometryReader { geo in
             let totalWidth = max(1, geo.size.width)
             let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
+            let dividerWidth: CGFloat = vm.viewMode == .split ? 1 : 0
+            let listWidth: CGFloat = {
+                switch vm.viewMode {
+                case .listOnly: return totalWidth
+                case .split: return clampedListWidth
+                case .ganttOnly: return 0
+                }
+            }()
+            let ganttWidth: CGFloat = {
+                switch vm.viewMode {
+                case .listOnly: return 0
+                case .split: return max(380, totalWidth - clampedListWidth - dividerWidth)
+                case .ganttOnly: return totalWidth
+                }
+            }()
 
             HStack(spacing: 0) {
-                if vm.viewMode != .ganttOnly {
-                    TaskListView(
-                        viewModel: vm,
-                        verticalScrollOffset: $verticalScrollOffset,
-                        onAddDependency: { dependencyTargetID = $0 }
-                    )
-                    .frame(width: vm.viewMode == .split ? clampedListWidth : totalWidth)
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                }
+                TaskListView(
+                    viewModel: vm,
+                    verticalScrollOffset: $verticalScrollOffset,
+                    onAddDependency: { dependencyTargetID = $0 }
+                )
+                .frame(width: listWidth)
+                .clipped()
+                .opacity(vm.viewMode == .ganttOnly ? 0 : 1)
+                .allowsHitTesting(vm.viewMode != .ganttOnly)
 
                 if vm.viewMode == .split {
                     Rectangle()
@@ -313,16 +328,16 @@ struct MainWindowView: View {
                         }
                 }
 
-                if vm.viewMode != .listOnly {
-                    GanttChartView(
-                        viewModel: vm,
-                        verticalScrollOffset: $verticalScrollOffset
-                    )
-                    .frame(width: vm.viewMode == .split ? max(380, totalWidth - clampedListWidth - 1) : totalWidth)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
-                }
+                GanttChartView(
+                    viewModel: vm,
+                    verticalScrollOffset: $verticalScrollOffset
+                )
+                .frame(width: ganttWidth)
+                .clipped()
+                .opacity(vm.viewMode == .listOnly ? 0 : 1)
+                .allowsHitTesting(vm.viewMode != .listOnly)
             }
-            .animation(.snappy(duration: 0.24, extraBounce: 0), value: vm.viewMode)
+            .animation(.snappy(duration: 0.26, extraBounce: 0), value: vm.viewMode)
         }
     }
 

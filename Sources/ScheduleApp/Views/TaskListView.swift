@@ -12,6 +12,8 @@ struct TaskListView: View {
     @State private var draggingTaskID: UUID?
     @State private var searchText: String = ""
     @State private var activePopover: CellPopover?
+    @State private var scrollPosition = ScrollPosition(y: 0)
+    @State private var isSyncingFromPeer = false
 
     private enum CellPopover: Identifiable, Equatable {
         case start(UUID)
@@ -72,10 +74,19 @@ struct TaskListView: View {
                 }
                 .animation(.snappy(duration: 0.22, extraBounce: 0), value: filteredRows.map(\.id))
             }
+            .scrollPosition($scrollPosition)
             .onScrollGeometryChange(for: CGFloat.self) { geo in
                 geo.contentOffset.y
             } action: { _, newOffset in
-                verticalScrollOffset = newOffset
+                guard !isSyncingFromPeer else { return }
+                if abs(verticalScrollOffset - newOffset) > 0.5 {
+                    verticalScrollOffset = newOffset
+                }
+            }
+            .onChange(of: verticalScrollOffset) { _, newOffset in
+                isSyncingFromPeer = true
+                scrollPosition.scrollTo(y: newOffset)
+                DispatchQueue.main.async { isSyncingFromPeer = false }
             }
         }
         .background(Color(nsColor: .textBackgroundColor))

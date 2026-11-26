@@ -8,6 +8,8 @@ struct GanttChartView: View {
     @State private var dragState: BarDragState?
     @State private var linkDrag: LinkDragState?
     @State private var hoveredTaskID: UUID?
+    @State private var scrollPosition = ScrollPosition(y: 0)
+    @State private var isSyncingFromPeer = false
 
     private struct LinkDragState {
         let sourceTaskID: UUID
@@ -68,9 +70,21 @@ struct GanttChartView: View {
                                 interactiveOverlay(rows: rows, timelineStart: bounds.start)
                                     .frame(width: totalWidth, height: totalHeight)
                             }
-                            .offset(y: -verticalScrollOffset)
                         }
-                        .scrollDisabled(true)
+                        .scrollPosition($scrollPosition)
+                        .onScrollGeometryChange(for: CGFloat.self) { geo in
+                            geo.contentOffset.y
+                        } action: { _, newOffset in
+                            guard !isSyncingFromPeer else { return }
+                            if abs(verticalScrollOffset - newOffset) > 0.5 {
+                                verticalScrollOffset = newOffset
+                            }
+                        }
+                        .onChange(of: verticalScrollOffset) { _, newOffset in
+                            isSyncingFromPeer = true
+                            scrollPosition.scrollTo(y: newOffset)
+                            DispatchQueue.main.async { isSyncingFromPeer = false }
+                        }
                     }
                 }
             }
@@ -331,6 +345,11 @@ struct GanttChartView: View {
                     let barRect = CGRect(x: rect.minX, y: rect.minY + 4, width: rect.width, height: 6)
                     let path = Path(roundedRect: barRect, cornerRadius: 3)
                     context.fill(path, with: .color(Color.primary.opacity(0.65)))
+
+                    let label = Text("\(task.identifier)  \(task.title)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(Color.primary.opacity(0.85))
+                    context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
                 } else {
                     let barShape = Path(roundedRect: rect, cornerRadius: 5)
                     let baseColor: Color = isCritical ? Color.red.opacity(0.85) : ScheduleTheme.accent.opacity(0.85)
@@ -350,6 +369,11 @@ struct GanttChartView: View {
                         with: .color(isSelected ? Color.primary : baseColor),
                         lineWidth: isSelected ? 1.5 : 0.75
                     )
+
+                    let label = Text("\(task.identifier)  \(task.title)")
+                        .font(.caption2)
+                        .foregroundStyle(Color.secondary)
+                    context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
                 }
             }
         }
