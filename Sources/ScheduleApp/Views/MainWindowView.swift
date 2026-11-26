@@ -344,6 +344,9 @@ struct MainWindowView: View {
     private func syncViewModel() {
         if let doc = store.currentProject {
             if viewModel?.document.id != doc.id {
+                if let oldVM = viewModel {
+                    undoManager?.removeAllActions(withTarget: oldVM)
+                }
                 let vm = ProjectViewModel(document: doc) { updated in
                     store.updateProject(updated)
                 }
@@ -352,6 +355,9 @@ struct MainWindowView: View {
                 scrollSync.reset()
             }
         } else {
+            if let oldVM = viewModel {
+                undoManager?.removeAllActions(withTarget: oldVM)
+            }
             viewModel = nil
         }
     }

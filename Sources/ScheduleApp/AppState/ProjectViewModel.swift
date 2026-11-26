@@ -280,7 +280,7 @@ public final class ProjectViewModel {
         }
 
         undoManager?.registerUndo(withTarget: self) { target in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 target.commit(newDocument: previousDocument, previousDocument: newDocument, actionName: actionName)
             }
         }
