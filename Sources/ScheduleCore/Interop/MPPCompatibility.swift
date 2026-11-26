@@ -33,9 +33,16 @@ public enum MPPCompatibility {
         }
         let data = try Data(contentsOf: url)
         let ext = url.pathExtension.lowercased()
+        let baseName = url.deletingPathExtension().lastPathComponent
         if ext == "schedule" || ext == "json" {
             return try ProjectDocument.decodeJSON(from: data)
         }
-        return try MSPXMLInterop.importXML(from: data, fallbackName: url.deletingPathExtension().lastPathComponent)
+        if ext == "xlsx" {
+            return try SpreadsheetImporter.importXLSX(from: data, projectName: baseName)
+        }
+        if ext == "csv" || ext == "tsv" || ext == "txt" {
+            return try SpreadsheetImporter.importDelimited(from: data, delimiter: ext == "tsv" ? "\t" : nil, projectName: baseName)
+        }
+        return try MSPXMLInterop.importXML(from: data, fallbackName: baseName)
     }
 }

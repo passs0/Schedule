@@ -140,4 +140,26 @@ do {
     check(diff.finishDateDeltaDays == 2, "Diff finish delta")
 }
 
-print("All 8 ScheduleCore verification suites passed.")
+// 9. Spreadsheet (.xlsx & .csv) import with hierarchy
+do {
+    let sample = ProjectDocument.sampleProject(referenceDate: monday)
+    let xlsxData = try XLSXExporter.exportData(for: sample)
+    let importedXLSX = try SpreadsheetImporter.importXLSX(from: xlsxData, projectName: "RoundTrip")
+    check(importedXLSX.tasks.count == sample.tasks.count, "XLSX import task count")
+    check(importedXLSX.tasks.filter { $0.parentID != nil }.count == 7, "XLSX import preserves hierarchy")
+
+    let csv = """
+    ID,Task Name,Start,Duration,Predecessors
+    1,Phase A,2026-11-02,1,
+    1.1,Design,2026-11-02,3,
+    1.2,Build,2026-11-05,4,1.1
+    1.3,Sign-Off,2026-11-11,0,1.2
+    """
+    let importedCSV = try SpreadsheetImporter.importDelimited(from: Data(csv.utf8), projectName: "CSV Test")
+    check(importedCSV.tasks.count == 4, "CSV import count")
+    check(importedCSV.tasks[1].parentID == importedCSV.tasks[0].id, "CSV WBS parent")
+    check(importedCSV.tasks[2].dependencies.first?.predecessorID == importedCSV.tasks[1].id, "CSV predecessor link")
+    check(importedCSV.tasks[3].isMilestone == true, "CSV 0-duration milestone")
+}
+
+print("All 9 ScheduleCore verification suites passed.")
