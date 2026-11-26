@@ -23,6 +23,8 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
     public var isManuallyScheduled: Bool
     /// Optional assigned owner/region calendar ID. `nil` inherits the project's default calendar.
     public var calendarID: UUID?
+    /// Optional Directly Responsible Individual (DRI) assigned to this task.
+    public var dri: String?
 
     // Computed by `SchedulingEngine`:
     public var isCritical: Bool
@@ -43,6 +45,7 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
         dependencies: [TaskDependency] = [],
         isManuallyScheduled: Bool = false,
         calendarID: UUID? = nil,
+        dri: String? = nil,
         isCritical: Bool = false,
         totalSlackDays: Int = 0,
         calendar: WorkingCalendar = .standard
@@ -67,6 +70,7 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
         self.dependencies = dependencies
         self.isManuallyScheduled = isManuallyScheduled
         self.calendarID = calendarID
+        self.dri = dri
         self.isCritical = isCritical
         self.totalSlackDays = totalSlackDays
     }

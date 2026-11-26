@@ -333,7 +333,8 @@ struct GanttChartView: View {
                     context.fill(diamond, with: .color(fill))
                     context.stroke(diamond, with: .color(isSelected ? Color.primary : Color.white.opacity(0.8)), lineWidth: isSelected ? 2.0 : 1.0)
 
-                    let label = Text(task.title)
+                    let driSuffix = (task.dri?.isEmpty == false) ? "  ·  \(task.dri!)" : ""
+                    let label = Text(task.title + driSuffix)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(isCritical ? .red : ScheduleTheme.accent)
                     context.draw(label, at: CGPoint(x: center.x + r + 8, y: center.y), anchor: .leading)
@@ -367,7 +368,8 @@ struct GanttChartView: View {
                         lineWidth: isSelected ? 1.5 : 0.75
                     )
 
-                    let label = Text("\(task.identifier)  \(task.title)")
+                    let driSuffix = (task.dri?.isEmpty == false) ? "  ·  \(task.dri!)" : ""
+                    let label = Text("\(task.identifier)  \(task.title)\(driSuffix)")
                         .font(.caption2)
                         .foregroundStyle(Color.secondary)
                     context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)

@@ -19,6 +19,7 @@ struct TaskListView: View {
         case progress(UUID)
         case relationship(UUID)
         case calendar(UUID)
+        case dri(UUID)
 
         var id: String {
             switch self {
@@ -27,6 +28,7 @@ struct TaskListView: View {
             case .progress(let id): return "prog:\(id)"
             case .relationship(let id): return "rel:\(id)"
             case .calendar(let id): return "cal:\(id)"
+            case .dri(let id): return "dri:\(id)"
             }
         }
     }
@@ -36,7 +38,8 @@ struct TaskListView: View {
         if q.isEmpty { return viewModel.visibleRows }
         return viewModel.visibleRows.filter {
             $0.task.title.localizedCaseInsensitiveContains(q) ||
-            $0.task.identifier.localizedCaseInsensitiveContains(q)
+            $0.task.identifier.localizedCaseInsensitiveContains(q) ||
+            ($0.task.dri?.localizedCaseInsensitiveContains(q) ?? false)
         }
     }
 
@@ -153,6 +156,10 @@ struct TaskListView: View {
                 Text("Calendar")
                     .frame(width: 118, alignment: .leading)
                     .padding(.horizontal, 8)
+                Divider().frame(height: 14)
+                Text("DRI")
+                    .frame(width: 96, alignment: .leading)
+                    .padding(.horizontal, 8)
             }
             Divider().frame(height: 14)
             Text("Start")
@@ -258,6 +265,10 @@ struct TaskListView: View {
 
                 calendarCell(for: task, isGroup: row.isGroup, isSelected: isSelected)
                     .frame(width: 118, alignment: .leading)
+                    .padding(.horizontal, 8)
+
+                driCell(for: task, isSelected: isSelected)
+                    .frame(width: 96, alignment: .leading)
                     .padding(.horizontal, 8)
             }
 
@@ -653,7 +664,41 @@ struct TaskListView: View {
                 .padding(12)
                 .frame(width: 260)
             }
+        case .dri(let id):
+            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
+                DRIPopoverView(
+                    initialDRI: task.dri ?? "",
+                    knownDRIs: viewModel.knownDRIs,
+                    onSave: { newDRI in
+                        let trimmed = newDRI.trimmingCharacters(in: .whitespacesAndNewlines)
+                        viewModel.updateTask(task.id, actionName: trimmed.isEmpty ? "Clear DRI" : "Assign DRI") { t, _ in
+                            t.dri = trimmed.isEmpty ? nil : trimmed
+                        }
+                        activePopover = nil
+                    }
+                )
+            }
         }
+    }
+
+    @ViewBuilder
+    private func driCell(for task: ScheduleTask, isSelected: Bool) -> some View {
+        let name = task.dri?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        Text(name.isEmpty ? "Assign…" : name)
+            .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(
+                isSelected
+                    ? Color.white.opacity(name.isEmpty ? 0.65 : 0.95)
+                    : (name.isEmpty ? Color.secondary.opacity(0.5) : Color.primary)
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                viewModel.selectTask(task.id)
+                activePopover = .dri(task.id)
+            }
     }
 
     @ViewBuilder
@@ -708,6 +753,76 @@ private struct TaskReorderDropDelegate: DropDelegate {
               let toIdx = rows.firstIndex(where: { $0.id == targetID }) else { return }
         let dest = toIdx > fromIdx ? toIdx + 1 : toIdx
         viewModel.moveVisibleRows(from: IndexSet(integer: fromIdx), to: dest)
+    }
+}
+
+private struct DRIPopoverView: View {
+    @State private var text: String
+    let knownDRIs: [String]
+    let onSave: (String) -> Void
+
+    init(initialDRI: String, knownDRIs: [String], onSave: @escaping (String) -> Void) {
+        _text = State(initialValue: initialDRI)
+        self.knownDRIs = knownDRIs
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Assign DRI")
+                .font(.callout.weight(.semibold))
+
+            HStack(spacing: 6) {
+                TextField("Name or role…", text: $text)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { onSave(text) }
+
+                Button("Set") {
+                    onSave(text)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            if !knownDRIs.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Quick Pick")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(knownDRIs, id: \.self) { name in
+                        Button {
+                            onSave(name)
+                        } label: {
+                            HStack {
+                                Image(systemName: "person.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Text(name)
+                                    .font(.callout)
+                                Spacer()
+                                if text.trimmingCharacters(in: .whitespacesAndNewlines) == name {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(ScheduleTheme.accent)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Divider()
+                Button("Clear DRI", role: .destructive) {
+                    onSave("")
+                }
+                .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .frame(width: 240)
     }
 }
 

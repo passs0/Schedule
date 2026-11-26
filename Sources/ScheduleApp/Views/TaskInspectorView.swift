@@ -29,6 +29,43 @@ struct TaskInspectorView: View {
                         }
                     ))
 
+                    HStack(spacing: 6) {
+                        TextField("DRI (Optional)", text: Binding(
+                            get: { task.dri ?? "" },
+                            set: { newVal in
+                                let trimmed = newVal.trimmingCharacters(in: .whitespacesAndNewlines)
+                                viewModel.updateTask(task.id, actionName: "Assign DRI") { t, _ in
+                                    t.dri = trimmed.isEmpty ? nil : newVal
+                                }
+                            }
+                        ))
+                        if !viewModel.knownDRIs.isEmpty || !(task.dri ?? "").isEmpty {
+                            Menu {
+                                ForEach(viewModel.knownDRIs, id: \.self) { name in
+                                    Button(name) {
+                                        viewModel.updateTask(task.id, actionName: "Assign DRI") { t, _ in
+                                            t.dri = name
+                                        }
+                                    }
+                                }
+                                if !(task.dri ?? "").isEmpty {
+                                    if !viewModel.knownDRIs.isEmpty { Divider() }
+                                    Button("Clear DRI", role: .destructive) {
+                                        viewModel.updateTask(task.id, actionName: "Clear DRI") { t, _ in
+                                            t.dri = nil
+                                        }
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "person.crop.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .menuStyle(.borderlessButton)
+                            .fixedSize()
+                            .help("Choose an existing DRI")
+                        }
+                    }
+
                     if !isGroup {
                         Toggle("Milestone", isOn: Binding(
                             get: { task.isMilestone },

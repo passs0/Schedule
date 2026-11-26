@@ -221,6 +221,14 @@ public final class ProjectViewModel {
         visibleRows = rows
     }
 
+    public var knownDRIs: [String] {
+        let names = Set(document.tasks.compactMap {
+            let trimmed = $0.dri?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        })
+        return names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     public func selectTask(_ id: UUID?, openInspectorIfNeeded: Bool = false) {
         selectedTaskID = id
         if openInspectorIfNeeded && id != nil {
