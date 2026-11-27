@@ -331,6 +331,7 @@ struct MainWindowView: View {
                 .opacity(vm.viewMode == .listOnly ? 0 : 1)
                 .allowsHitTesting(vm.viewMode != .listOnly)
             }
+            .animation(.easeInOut(duration: 0.20), value: vm.viewMode)
         }
     }
 
