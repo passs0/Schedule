@@ -28,12 +28,12 @@ struct GanttChartView: View {
         var currentPoint: CGPoint
     }
 
-    struct BarDragState {
+    struct BarDragState: Equatable {
         let taskID: UUID
         let mode: Mode
         var dayDelta: Int = 0
 
-        enum Mode {
+        enum Mode: Equatable {
             case move
             case resizeDuration
         }
@@ -66,19 +66,34 @@ struct GanttChartView: View {
             Divider()
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
-                    timelineHeader(start: bounds.start, totalDays: bounds.totalDays)
-                        .frame(width: totalWidth, height: headerHeight)
+                    TimelineHeaderCanvas(
+                        start: bounds.start,
+                        totalDays: bounds.totalDays,
+                        dayWidth: dayWidth,
+                        timeScale: viewModel.timeScale,
+                        workingCalendar: viewModel.document.workingCalendar
+                    )
+                    .equatable()
+                    .frame(width: totalWidth, height: headerHeight)
                     Divider()
 
                     ScrollView(.vertical) {
                         ZStack(alignment: .topLeading) {
-                            ganttCanvas(
+                            GanttBodyCanvas(
                                 rows: rows,
                                 start: bounds.start,
                                 totalDays: bounds.totalDays,
-                                width: totalWidth,
-                                height: totalHeight
+                                dayWidth: dayWidth,
+                                rowHeight: rowHeight,
+                                timeScale: viewModel.timeScale,
+                                workingCalendar: viewModel.document.workingCalendar,
+                                selectedTaskID: viewModel.selectedTaskID,
+                                showCriticalPath: viewModel.showCriticalPath,
+                                baselineVersionID: viewModel.baselineVersionID,
+                                baselineTasksByID: viewModel.baselineTasksByID,
+                                dragState: dragState
                             )
+                            .equatable()
                             .frame(width: totalWidth, height: totalHeight)
 
                             interactiveOverlay(rows: rows, timelineStart: bounds.start)
@@ -189,21 +204,6 @@ struct GanttChartView: View {
 
     // MARK: - Timeline Header
 
-    private func timelineHeader(start: CalendarDay, totalDays: Int) -> some View {
-        Canvas { context, size in
-            Self.drawTimelineHeader(
-                context: &context,
-                size: size,
-                start: start,
-                totalDays: totalDays,
-                dayWidth: dayWidth,
-                timeScale: viewModel.timeScale,
-                workingCalendar: viewModel.document.workingCalendar
-            )
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
-    }
-
     static func drawTimelineHeader(
         context: inout GraphicsContext,
         size: CGSize,
@@ -269,32 +269,6 @@ struct GanttChartView: View {
     }
 
     // MARK: - Gantt Canvas (Grid, Today, Connectors, Bars)
-
-    private func ganttCanvas(
-        rows: [VisibleTaskRow],
-        start: CalendarDay,
-        totalDays: Int,
-        width: CGFloat,
-        height: CGFloat
-    ) -> some View {
-        Canvas { context, size in
-            Self.drawGanttBody(
-                context: &context,
-                size: size,
-                rows: rows,
-                start: start,
-                totalDays: totalDays,
-                dayWidth: dayWidth,
-                rowHeight: rowHeight,
-                timeScale: viewModel.timeScale,
-                workingCalendar: viewModel.document.workingCalendar,
-                selectedTaskID: viewModel.selectedTaskID,
-                showCriticalPath: viewModel.showCriticalPath,
-                baselineTasksByID: viewModel.baselineTasksByID,
-                dragState: dragState
-            )
-        }
-    }
 
     static func drawGanttBody(
         context: inout GraphicsContext,
@@ -718,5 +692,77 @@ struct GanttChartView: View {
             }
         }
         .coordinateSpace(name: "GanttOverlay")
+    }
+}
+
+private struct TimelineHeaderCanvas: View, Equatable {
+    let start: CalendarDay
+    let totalDays: Int
+    let dayWidth: CGFloat
+    let timeScale: GanttTimeScale
+    let workingCalendar: WorkingCalendar
+
+    var body: some View {
+        Canvas { context, size in
+            GanttChartView.drawTimelineHeader(
+                context: &context,
+                size: size,
+                start: start,
+                totalDays: totalDays,
+                dayWidth: dayWidth,
+                timeScale: timeScale,
+                workingCalendar: workingCalendar
+            )
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+}
+
+private struct GanttBodyCanvas: View, Equatable {
+    let rows: [VisibleTaskRow]
+    let start: CalendarDay
+    let totalDays: Int
+    let dayWidth: CGFloat
+    let rowHeight: CGFloat
+    let timeScale: GanttTimeScale
+    let workingCalendar: WorkingCalendar
+    let selectedTaskID: UUID?
+    let showCriticalPath: Bool
+    let baselineVersionID: UUID?
+    let baselineTasksByID: [UUID: ScheduleTask]
+    let dragState: GanttChartView.BarDragState?
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rows == rhs.rows &&
+        lhs.start == rhs.start &&
+        lhs.totalDays == rhs.totalDays &&
+        lhs.dayWidth == rhs.dayWidth &&
+        lhs.rowHeight == rhs.rowHeight &&
+        lhs.timeScale == rhs.timeScale &&
+        lhs.workingCalendar == rhs.workingCalendar &&
+        lhs.selectedTaskID == rhs.selectedTaskID &&
+        lhs.showCriticalPath == rhs.showCriticalPath &&
+        lhs.baselineVersionID == rhs.baselineVersionID &&
+        lhs.dragState == rhs.dragState
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            GanttChartView.drawGanttBody(
+                context: &context,
+                size: size,
+                rows: rows,
+                start: start,
+                totalDays: totalDays,
+                dayWidth: dayWidth,
+                rowHeight: rowHeight,
+                timeScale: timeScale,
+                workingCalendar: workingCalendar,
+                selectedTaskID: selectedTaskID,
+                showCriticalPath: showCriticalPath,
+                baselineTasksByID: baselineTasksByID,
+                dragState: dragState
+            )
+        }
     }
 }

@@ -56,7 +56,6 @@ struct TaskListView: View {
 
     var body: some View {
         let rows = filteredRows
-        let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
 
         VStack(spacing: 0) {
             listSummaryBar
@@ -64,21 +63,33 @@ struct TaskListView: View {
             headerBar
             Divider()
             ScrollView(.vertical) {
-                LazyVStack(spacing: 0) {
-                    ForEach(rows) { row in
-                        taskRow(row, taskMap: taskMap)
-                            .onDrag {
-                                draggingTaskID = row.id
-                                return NSItemProvider(object: row.id.uuidString as NSString)
-                            }
-                            .onDrop(of: [.plainText], delegate: TaskReorderDropDelegate(
-                                targetID: row.id,
-                                draggingID: $draggingTaskID,
-                                viewModel: viewModel
-                            ))
+                EquatableRowsView(
+                    rows: rows,
+                    selectedTaskID: viewModel.selectedTaskID,
+                    editingTaskID: editingTaskID,
+                    editingTitle: editingTitle,
+                    showExtendedColumns: showExtendedColumns,
+                    recentlyRescheduledIDs: viewModel.recentlyRescheduledIDs,
+                    calendars: viewModel.document.calendars
+                ) {
+                    let taskMap = Dictionary(uniqueKeysWithValues: viewModel.document.tasks.map { ($0.id, $0) })
+                    LazyVStack(spacing: 0) {
+                        ForEach(rows) { row in
+                            taskRow(row, taskMap: taskMap)
+                                .onDrag {
+                                    draggingTaskID = row.id
+                                    return NSItemProvider(object: row.id.uuidString as NSString)
+                                }
+                                .onDrop(of: [.plainText], delegate: TaskReorderDropDelegate(
+                                    targetID: row.id,
+                                    draggingID: $draggingTaskID,
+                                    viewModel: viewModel
+                                ))
+                        }
                     }
+                    .background(ScrollSyncAnchor(pane: .list, state: scrollSync))
                 }
-                .background(ScrollSyncAnchor(pane: .list, state: scrollSync))
+                .equatable()
             }
         }
         .background(Color(nsColor: .textBackgroundColor))
@@ -941,6 +952,31 @@ private struct ScheduleAnchorPopover: View {
         }
         .padding(14)
         .frame(width: 280)
+    }
+}
+
+private struct EquatableRowsView<Content: View>: View, Equatable {
+    let rows: [VisibleTaskRow]
+    let selectedTaskID: UUID?
+    let editingTaskID: UUID?
+    let editingTitle: String
+    let showExtendedColumns: Bool
+    let recentlyRescheduledIDs: Set<UUID>
+    let calendars: [NamedWorkingCalendar]
+    @ViewBuilder let content: () -> Content
+
+    nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rows == rhs.rows &&
+        lhs.selectedTaskID == rhs.selectedTaskID &&
+        lhs.editingTaskID == rhs.editingTaskID &&
+        lhs.editingTitle == rhs.editingTitle &&
+        lhs.showExtendedColumns == rhs.showExtendedColumns &&
+        lhs.recentlyRescheduledIDs == rhs.recentlyRescheduledIDs &&
+        lhs.calendars == rhs.calendars
+    }
+
+    var body: some View {
+        content()
     }
 }
 

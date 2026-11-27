@@ -3,7 +3,7 @@ import SwiftUI
 import AppKit
 import ScheduleCore
 
-public struct VisibleTaskRow: Identifiable, Equatable {
+public struct VisibleTaskRow: Identifiable, Equatable, Sendable {
     public var id: UUID { task.id }
     public let task: ScheduleTask
     public let depth: Int
@@ -11,7 +11,7 @@ public struct VisibleTaskRow: Identifiable, Equatable {
     public let flatIndex: Int
 }
 
-public enum GanttTimeScale: String, CaseIterable, Identifiable {
+public enum GanttTimeScale: String, CaseIterable, Identifiable, Sendable {
     case days = "Days"
     case weeks = "Weeks"
     case months = "Months"
