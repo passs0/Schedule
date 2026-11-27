@@ -177,6 +177,13 @@
 "Save Snapshot" = "儲存快照";
 "Close Comparison" = "關閉比較";
 
+/* Settings */
+"Language" = "語言";
+"System Default" = "跟隨系統預設";
+"Restart Schedule to apply the new language." = "重新啟動 Schedule 以套用新語言。";
+"Changes take effect after relaunching Schedule." = "變更會在重新啟動 Schedule 後生效。";
+"Relaunch Now" = "立即重新啟動";
+
 /* Alerts */
 "OK" = "好";
 "Circular Dependency" = "循環相依";

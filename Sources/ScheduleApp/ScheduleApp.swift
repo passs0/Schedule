@@ -92,5 +92,100 @@ struct ScheduleApp: App {
                 .keyboardShortcut("i", modifiers: .command)
             }
         }
+
+        Settings {
+            ScheduleSettingsView()
+                .tint(ScheduleTheme.accent)
+        }
+    }
+}
+
+private enum AppLanguageOption: String, CaseIterable, Identifiable {
+    case system
+    case english
+    case traditionalChinese
+
+    var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .system: return "System Default"
+        case .english: return "English"
+        case .traditionalChinese: return "繁體中文（台灣）"
+        }
+    }
+
+    static func currentSelection() -> AppLanguageOption {
+        guard let langs = UserDefaults.standard.array(forKey: "AppleLanguages") as? [String],
+              let first = langs.first else {
+            return .system
+        }
+        if first.hasPrefix("zh-Hant") {
+            return .traditionalChinese
+        }
+        if first.hasPrefix("en") {
+            return .english
+        }
+        return .system
+    }
+
+    func apply() {
+        switch self {
+        case .system:
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        case .english:
+            UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+        case .traditionalChinese:
+            UserDefaults.standard.set(["zh-Hant-TW"], forKey: "AppleLanguages")
+        }
+    }
+}
+
+private struct ScheduleSettingsView: View {
+    @State private var selectedLanguage: AppLanguageOption = AppLanguageOption.currentSelection()
+    @State private var initialLanguage: AppLanguageOption = AppLanguageOption.currentSelection()
+
+    var body: some View {
+        Form {
+            Picker("Language", selection: $selectedLanguage) {
+                ForEach(AppLanguageOption.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .onChange(of: selectedLanguage) { _, newValue in
+                newValue.apply()
+            }
+
+            if selectedLanguage != initialLanguage {
+                HStack(spacing: 10) {
+                    Text("Restart Schedule to apply the new language.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Relaunch Now") {
+                        relaunchApp()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            } else {
+                Text("Changes take effect after relaunching Schedule.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 400, height: 150)
+    }
+
+    private func relaunchApp() {
+        let url = Bundle.main.bundleURL
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in
+            DispatchQueue.main.async {
+                NSApp.terminate(nil)
+            }
+        }
     }
 }
