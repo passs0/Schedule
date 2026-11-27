@@ -31,7 +31,7 @@ struct WelcomeView: View {
                         .frame(width: 88, height: 88)
                         .shadow(color: .black.opacity(0.16), radius: 10, x: 0, y: 4)
 
-                    Text("Welcome to Schedule")
+                    Text("Schedule")
                         .font(.title2.weight(.semibold))
 
                     Text("Open an existing project, import a task list, or create a new schedule.")
