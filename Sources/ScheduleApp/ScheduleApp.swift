@@ -19,7 +19,14 @@ struct ScheduleApp: App {
     @State private var store = WorkspaceStore()
 
     var body: some Scene {
-        WindowGroup("Schedule") {
+        Window("Welcome to Schedule", id: "welcome") {
+            WelcomeWindowView(store: store)
+                .tint(ScheduleTheme.accent)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+
+        WindowGroup("Schedule", id: "workspace") {
             MainWindowView(store: store)
                 .tint(ScheduleTheme.accent)
         }

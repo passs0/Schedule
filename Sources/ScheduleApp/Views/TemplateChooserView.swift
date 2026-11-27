@@ -1,6 +1,81 @@
 import SwiftUI
 import ScheduleCore
 
+/// Native macOS Welcome window scene content (compact, fixed-size via `.windowResizability(.contentSize)`).
+struct WelcomeWindowView: View {
+    @Bindable var store: WorkspaceStore
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
+
+    @State private var showingTemplateChooser = false
+    @State private var pendingTemplate: ProjectTemplate?
+    @State private var importErrorMessage: String?
+
+    var body: some View {
+        WelcomeView(
+            recentProjects: store.recentProjects,
+            onOpenProject: { id in
+                store.selectProject(id)
+                openWorkspace()
+            },
+            onOpenFile: {
+                guard let result = FileDialogs.importProject() else { return }
+                switch result {
+                case .success(let doc):
+                    store.importProject(doc)
+                    openWorkspace()
+                case .failure(let error):
+                    let nsErr = error as NSError
+                    importErrorMessage = [error.localizedDescription, nsErr.localizedRecoverySuggestion]
+                        .compactMap { $0 }
+                        .joined(separator: "\n\n")
+                }
+            },
+            onNewDocument: {
+                showingTemplateChooser = true
+            }
+        )
+        .frame(width: 560, height: 480)
+        .sheet(isPresented: $showingTemplateChooser, onDismiss: {
+            if let template = pendingTemplate {
+                pendingTemplate = nil
+                _ = store.createNewProject(template: template)
+                openWorkspace()
+            }
+        }) {
+            TemplateChooserView(
+                onSelectTemplate: { template in
+                    pendingTemplate = template
+                    showingTemplateChooser = false
+                },
+                onCancel: {
+                    pendingTemplate = nil
+                    showingTemplateChooser = false
+                }
+            )
+            .frame(width: 720, height: 460)
+        }
+        .alert(
+            "Import Notice",
+            isPresented: Binding(
+                get: { importErrorMessage != nil },
+                set: { if !$0 { importErrorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {
+                importErrorMessage = nil
+            }
+        } message: {
+            Text(importErrorMessage ?? "")
+        }
+    }
+
+    private func openWorkspace() {
+        openWindow(id: "workspace")
+        dismissWindow(id: "welcome")
+    }
+}
+
 /// Pages-style initial screen shown when no project is open:
 /// lets the user open an existing/recent file or click "New Document…" to pick a template.
 struct WelcomeView: View {
