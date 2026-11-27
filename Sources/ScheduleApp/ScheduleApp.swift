@@ -19,7 +19,7 @@ struct ScheduleApp: App {
     @State private var store = WorkspaceStore()
 
     var body: some Scene {
-        Window("Welcome to Schedule", id: "welcome") {
+        Window("Schedule", id: "welcome") {
             WelcomeWindowView(store: store)
                 .tint(ScheduleTheme.accent)
         }

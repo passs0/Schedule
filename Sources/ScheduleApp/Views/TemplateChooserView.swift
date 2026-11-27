@@ -35,7 +35,7 @@ struct WelcomeWindowView: View {
                 showingTemplateChooser = true
             }
         )
-        .frame(width: 560, height: 480)
+        .frame(width: store.recentProjects.isEmpty ? 580 : 680, height: store.recentProjects.isEmpty ? 380 : 400)
         .sheet(isPresented: $showingTemplateChooser, onDismiss: {
             if let template = pendingTemplate {
                 pendingTemplate = nil
@@ -76,108 +76,138 @@ struct WelcomeWindowView: View {
     }
 }
 
-/// Pages-style initial screen shown when no project is open:
-/// lets the user open an existing/recent file or click "New Document…" to pick a template.
+/// Apple-style welcome screen:
+/// centered single-column (580x380, matching Player) when empty,
+/// or Xcode-style two-column layout (680x400) with a right-hand Recent Projects list.
 struct WelcomeView: View {
     let recentProjects: [ProjectDocument]
     let onOpenProject: (UUID) -> Void
     let onOpenFile: () -> Void
     let onNewDocument: () -> Void
 
+    @State private var hoveredProjectID: UUID?
+
     var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Image(nsImage: NSApp.applicationIconImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 88, height: 88)
-                        .shadow(color: .black.opacity(0.16), radius: 10, x: 0, y: 4)
+        if recentProjects.isEmpty {
+            heroColumn
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
+        } else {
+            HStack(spacing: 0) {
+                heroColumn
+                    .frame(width: 380)
+                    .frame(maxHeight: .infinity)
+                    .background(Color(nsColor: .windowBackgroundColor))
 
-                    Text("Schedule")
-                        .font(.title2.weight(.semibold))
+                Divider()
 
-                    Text("Open an existing project, import a task list, or create a new schedule.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                if !recentProjects.isEmpty {
-                    let visibleRecent = Array(recentProjects.prefix(4))
-                    Form {
-                        Section("Recent Projects") {
-                            ForEach(visibleRecent) { project in
-                                Button {
-                                    onOpenProject(project.id)
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "calendar.day.timeline.leading")
-                                            .font(.callout)
-                                            .foregroundStyle(ScheduleTheme.accent)
-                                            .frame(width: 22)
-
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(project.name)
-                                                .font(.callout.weight(.medium))
-                                                .foregroundStyle(.primary)
-                                            Text("\(project.tasks.count) items")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        Text(project.modifiedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption2.weight(.semibold))
-                                            .foregroundStyle(.quaternary)
-                                    }
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .formStyle(.grouped)
-                    .scrollContentBackground(.hidden)
-                    .scrollDisabled(true)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 460)
-                }
+                recentColumn
+                    .frame(width: 300)
+                    .frame(maxHeight: .infinity)
+                    .background(Color(nsColor: .controlBackgroundColor).opacity(0.65))
             }
-            .padding(.top, 20)
-            .padding(.horizontal, 32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
 
-            Spacer(minLength: 20)
+    private var heroColumn: some View {
+        VStack(spacing: 20) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 88, height: 88)
+                .shadow(color: .black.opacity(0.16), radius: 10, x: 0, y: 4)
 
-            HStack(spacing: 12) {
-                Button {
-                    onOpenFile()
-                } label: {
-                    Label("Open File…", systemImage: "folder")
-                        .frame(minWidth: 136)
+            VStack(spacing: 4) {
+                Text("Schedule")
+                    .font(.title.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text("Open a project, import a task list, or create a new schedule")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 10) {
+                Button(action: onNewDocument) {
+                    Label("New Document…", systemImage: "plus")
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+
+                Button(action: onOpenFile) {
+                    Label("Open File…", systemImage: "folder")
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
                 .controlSize(.large)
                 .keyboardShortcut("o", modifiers: .command)
-
-                Button {
-                    onNewDocument()
-                } label: {
-                    Label("New Document…", systemImage: "plus")
-                        .frame(minWidth: 148)
-                }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
             }
-            .padding(.bottom, 24)
+            .padding(.top, 4)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .padding(.horizontal, 28)
+    }
+
+    private var recentColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Recent Projects")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 18)
+                .padding(.bottom, 8)
+
+            ScrollView {
+                LazyVStack(spacing: 2) {
+                    ForEach(recentProjects.prefix(12)) { project in
+                        Button {
+                            onOpenProject(project.id)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "calendar.day.timeline.leading")
+                                    .font(.callout)
+                                    .foregroundStyle(ScheduleTheme.accent)
+                                    .frame(width: 20)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(project.name)
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    HStack(spacing: 4) {
+                                        Text("\(project.tasks.count) items")
+                                        Text("·")
+                                        Text(project.modifiedAt, format: .dateTime.month(.abbreviated).day())
+                                    }
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                }
+
+                                Spacer(minLength: 4)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                hoveredProjectID == project.id
+                                    ? Color.primary.opacity(0.08)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .onHover { hovering in
+                            hoveredProjectID = hovering ? project.id : (hoveredProjectID == project.id ? nil : hoveredProjectID)
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
+            }
+        }
     }
 }
 
