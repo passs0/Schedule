@@ -155,6 +155,7 @@ struct GanttChartView: View {
                         .foregroundStyle(activeName != nil ? ScheduleTheme.accent : .secondary)
                 }
                 .menuStyle(.borderlessButton)
+                .controlSize(.small)
                 .fixedSize()
                 .help("Compare against a saved snapshot inline on the Gantt chart")
             }
