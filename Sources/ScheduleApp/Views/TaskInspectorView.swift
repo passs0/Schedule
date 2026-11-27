@@ -246,7 +246,7 @@ struct TaskInspectorView: View {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(.tertiary)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.borderless)
                                 .help("Remove Relationship")
                             }
                         }

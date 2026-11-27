@@ -231,7 +231,7 @@ struct TaskListView: View {
                     .buttonStyle(.plain)
                 } else if task.isMilestone {
                     Image(systemName: "diamond.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(isSelected ? Color.white : ScheduleTheme.accent)
                         .frame(width: 16)
                 } else {
@@ -307,7 +307,7 @@ struct TaskListView: View {
                         )
                     if let deadline = task.deadline, task.endDate > deadline {
                         Image(systemName: "flag.fill")
-                            .font(.system(size: 9))
+                            .font(.caption2)
                             .foregroundStyle(isSelected ? Color.white : Color.red)
                             .help("Missed deadline: \(Self.shortDateFormatter.string(from: deadline.toDate()))")
                     }
@@ -609,7 +609,7 @@ struct TaskListView: View {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundStyle(.tertiary)
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.borderless)
                                 .help("Remove")
                             }
                         }
@@ -740,13 +740,6 @@ struct TaskListView: View {
             .menuIndicator(.hidden)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-}
-
-struct VerticalScrollOffsetKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }
 

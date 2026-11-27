@@ -265,7 +265,7 @@ struct VersionComparisonView: View {
 
                     if task.isMilestone {
                         Image(systemName: "diamond.fill")
-                            .font(.system(size: 10))
+                            .font(.caption2)
                             .foregroundStyle(barColor)
                             .offset(x: x)
                     } else {

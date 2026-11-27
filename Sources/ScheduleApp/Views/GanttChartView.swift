@@ -243,7 +243,7 @@ struct GanttChartView: View {
                 context.stroke(tick, with: .color(Color.secondary.opacity(0.22)), lineWidth: 0.5)
 
                 let text = Text(labelText)
-                    .font(.system(size: 10, weight: .medium, design: .default))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(day == today ? .red : .secondary)
                 context.draw(text, at: CGPoint(x: x + 4, y: size.height / 2), anchor: .leading)
             }

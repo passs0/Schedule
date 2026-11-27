@@ -485,12 +485,6 @@ public final class ProjectViewModel {
         }
     }
 
-    public func setProjectStartDate(_ newStart: CalendarDay) {
-        applyMutation(actionName: "Change Project Start") { doc in
-            doc.projectStartDate = doc.workingCalendar.snapToWorkingDay(newStart, forward: true)
-        }
-    }
-
     @discardableResult
     public func addDependency(to successorID: UUID, predecessorID: UUID, type: DependencyType, lagDays: Int) -> Bool {
         if SchedulingEngine.wouldCreateCycle(tasks: document.tasks, predecessorID: predecessorID, successorID: successorID) {
@@ -535,14 +529,6 @@ public final class ProjectViewModel {
         let versionName = trimmed.isEmpty ? "Snapshot \(document.versions.count + 1)" : trimmed
         let snapshot = ProjectVersion(name: versionName, notes: notes, tasks: document.tasks)
         document.versions.append(snapshot)
-        document.modifiedAt = Date()
-        onPersist(document)
-    }
-
-    public func renameProject(to newName: String) {
-        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != document.name else { return }
-        document.name = trimmed
         document.modifiedAt = Date()
         onPersist(document)
     }

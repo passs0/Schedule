@@ -12,16 +12,6 @@ enum ExportFormat: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var subtitle: String {
-        switch self {
-        case .ganttPDF: return "Lossless vector graphic for Keynote & print"
-        case .ganttPNG: return "High-DPI image for PowerPoint, Google Slides & web"
-        case .excel: return "Formula-driven workbook (also opens in Numbers)"
-        case .numbers: return "Native Apple Numbers document"
-        case .mspXML: return "Compatible with Microsoft Project"
-        }
-    }
-
     var systemImage: String {
         switch self {
         case .ganttPDF: return "doc.richtext"
@@ -104,10 +94,6 @@ enum FileDialogs {
         } catch {
             return (nil, error.localizedDescription)
         }
-    }
-
-    static func saveScheduleDocumentAs(_ document: ProjectDocument) -> (url: URL?, error: String?) {
-        saveScheduleDocument(document, existingURL: nil)
     }
 
     static func exportProject(_ viewModel: ProjectViewModel, format: ExportFormat) -> (success: Bool, message: String?) {

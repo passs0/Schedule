@@ -84,16 +84,6 @@ struct WelcomeView: View {
     let onOpenFile: () -> Void
     let onNewDocument: () -> Void
 
-    @State private var selectedProjectID: UUID?
-
-    private static let modifiedFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        df.doesRelativeDateFormatting = true
-        return df
-    }()
-
     var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 20)
@@ -123,7 +113,7 @@ struct WelcomeView: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
 
-                        List(visibleRecent, selection: $selectedProjectID) { project in
+                        List(visibleRecent) { project in
                             Button {
                                 onOpenProject(project.id)
                             } label: {
@@ -143,14 +133,13 @@ struct WelcomeView: View {
 
                                     Spacer()
 
-                                    Text(Self.modifiedFormatter.string(from: project.modifiedAt))
+                                    Text(project.modifiedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
                                         .font(.caption2)
                                         .foregroundStyle(.tertiary)
                                 }
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .tag(project.id)
                         }
                         .listStyle(.bordered(alternatesRowBackgrounds: false))
                         .frame(height: CGFloat(visibleRecent.count) * 44 + 8)
@@ -258,7 +247,7 @@ struct TemplateChooserView: View {
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: template.systemImage)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(isSelected ? .white : ScheduleTheme.accent)
                     .frame(width: 34, height: 34)
                     .background(
