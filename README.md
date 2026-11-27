@@ -15,6 +15,8 @@
 
 <p align="center">
   <img src="assets/preview.png" width="760" alt="Schedule" />
+  <br/><br/>
+  <img src="assets/preview_welcome.png" width="600" alt="Schedule Welcome" />
 </p>
 
 ---
