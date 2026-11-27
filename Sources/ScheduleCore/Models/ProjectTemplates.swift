@@ -13,36 +13,36 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .blank: return "Blank"
-        case .hardwareNPI: return "Hardware Product Launch"
-        case .softwareRelease: return "Software & Firmware Release"
-        case .systemCutover: return "System Cutover & Migration"
-        case .complianceAudit: return "Compliance & Lab Certification"
+        case .blank: return NSLocalizedString("Blank", comment: "")
+        case .hardwareNPI: return NSLocalizedString("Hardware Product Launch", comment: "")
+        case .softwareRelease: return NSLocalizedString("Software & Firmware Release", comment: "")
+        case .systemCutover: return NSLocalizedString("System Cutover & Migration", comment: "")
+        case .complianceAudit: return NSLocalizedString("Compliance & Lab Certification", comment: "")
         }
     }
 
     public var badge: String {
         switch self {
-        case .blank: return "Empty"
-        case .hardwareNPI: return "EVT → MP"
-        case .softwareRelease: return "Parallel Sprints"
-        case .systemCutover: return "Pinned Window"
-        case .complianceAudit: return "Lab & Audit"
+        case .blank: return NSLocalizedString("Empty", comment: "")
+        case .hardwareNPI: return NSLocalizedString("EVT → MP", comment: "")
+        case .softwareRelease: return NSLocalizedString("Parallel Sprints", comment: "")
+        case .systemCutover: return NSLocalizedString("Pinned Window", comment: "")
+        case .complianceAudit: return NSLocalizedString("Lab & Audit", comment: "")
         }
     }
 
     public var subtitle: String {
         switch self {
         case .blank:
-            return "Clean slate with a single kickoff task."
+            return NSLocalizedString("Clean slate with a single kickoff task.", comment: "")
         case .hardwareNPI:
-            return "Concept to mass production across EE, ME, 6-day factory CM, and compliance."
+            return NSLocalizedString("Concept to mass production across EE, ME, 6-day factory CM, and compliance.", comment: "")
         case .softwareRelease:
-            return "Architecture, parallel backend & client tracks, hardening, security audit, and canary GA."
+            return NSLocalizedString("Architecture, parallel backend & client tracks, hardening, security audit, and canary GA.", comment: "")
         case .systemCutover:
-            return "Landing zone, CDC replication, dress rehearsal, pinned 24×7 cutover window, and hypercare."
+            return NSLocalizedString("Landing zone, CDC replication, dress rehearsal, pinned 24×7 cutover window, and hypercare.", comment: "")
         case .complianceAudit:
-            return "Technical file, internal pre-scans, accredited lab testing, RoHS/REACH, and TCB filing."
+            return NSLocalizedString("Technical file, internal pre-scans, accredited lab testing, RoHS/REACH, and TCB filing.", comment: "")
         }
     }
 

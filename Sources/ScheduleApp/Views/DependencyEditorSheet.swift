@@ -71,7 +71,7 @@ struct DependencyEditorSheet: View {
                         if offsetDays > 0 {
                             Picker("", selection: $offsetDirection) {
                                 ForEach(OffsetDirection.allCases) { dir in
-                                    Text(dir.rawValue).tag(dir)
+                                    Text(LocalizedStringKey(dir.rawValue)).tag(dir)
                                 }
                             }
                             .pickerStyle(.segmented)

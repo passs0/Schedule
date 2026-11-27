@@ -1,0 +1,4 @@
+"CFBundleName" = "Schedule";
+"CFBundleDisplayName" = "Schedule";
+"NSCalendarsUsageDescription" = "Schedule 可從 Apple 行事曆匯入國定假日與團隊行事曆至您的專案行事曆中。";
+"NSCalendarsFullAccessUsageDescription" = "Schedule 可從 Apple 行事曆匯入國定假日與團隊行事曆至您的專案行事曆中。";

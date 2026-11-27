@@ -199,7 +199,7 @@ struct MainWindowView: View {
                     }
                 )) {
                     ForEach(WorkspaceViewMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
+                        Text(LocalizedStringKey(mode.rawValue)).tag(mode)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -256,9 +256,9 @@ struct MainWindowView: View {
                                         .frame(width: 20)
                                         .foregroundStyle(ScheduleTheme.accent)
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(format.rawValue)
+                                        Text(LocalizedStringKey(format.rawValue))
                                             .font(.callout.weight(.medium))
-                                        Text(format.subtitle)
+                                        Text(LocalizedStringKey(format.subtitle))
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                     }

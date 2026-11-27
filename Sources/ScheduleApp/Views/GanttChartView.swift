@@ -105,7 +105,7 @@ struct GanttChartView: View {
         HStack(spacing: 16) {
             Picker("Scale", selection: $viewModel.timeScale) {
                 ForEach(GanttTimeScale.allCases) { scale in
-                    Text(scale.rawValue).tag(scale)
+                    Text(LocalizedStringKey(scale.rawValue)).tag(scale)
                 }
             }
             .pickerStyle(.segmented)

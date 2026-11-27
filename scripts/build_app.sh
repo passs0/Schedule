@@ -25,6 +25,10 @@ cp "$BIN_PATH" "$MACOS_DIR/${APP_NAME}"
 cp "$ROOT_DIR/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
 printf "APPL????" > "$CONTENTS_DIR/PkgInfo"
 
+if [[ -d "$ROOT_DIR/Resources/Localization" ]]; then
+    cp -R "$ROOT_DIR/Resources/Localization/"*.lproj "$RESOURCES_DIR/"
+fi
+
 ICON_BUNDLE="$ROOT_DIR/Resources/Schedule.icon"
 if [[ -d "$ICON_BUNDLE" ]] && xcrun --find actool >/dev/null 2>&1; then
     echo "Compiling dynamic icon bundle ($ICON_BUNDLE) with actool..."
