@@ -12,8 +12,6 @@ struct MainWindowView: View {
     @State private var showingExportPopover = false
     @State private var showingTemplateChooser = false
     @State private var alertInfo: AlertInfo?
-    @State private var splitRatio: CGFloat = 0.50
-    @State private var dragStartRatio: CGFloat?
 
     @Environment(\.undoManager) private var undoManager
 
@@ -296,79 +294,12 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private func mainWorkspace(vm: ProjectViewModel) -> some View {
-        GeometryReader { geo in
-            let totalWidth = max(1, geo.size.width)
-            let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
-            let dividerWidth: CGFloat = vm.viewMode == .split ? 1 : 0
-            let listWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return totalWidth
-                case .split: return clampedListWidth
-                case .ganttOnly: return 0
-                }
-            }()
-            let ganttWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return 0
-                case .split: return max(380, totalWidth - clampedListWidth - dividerWidth)
-                case .ganttOnly: return totalWidth
-                }
-            }()
-
-            HStack(spacing: 0) {
-                TaskListView(
-                    viewModel: vm,
-                    scrollSync: scrollSync,
-                    onAddDependency: { dependencyTargetID = $0 }
-                )
-                .frame(width: listWidth)
-                .clipped()
-                .opacity(vm.viewMode == .ganttOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .ganttOnly)
-
-                if vm.viewMode == .split {
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor))
-                        .frame(width: 1)
-                        .overlay {
-                            Color.clear
-                                .frame(width: 8)
-                                .contentShape(Rectangle())
-                                .onHover { hovering in
-                                    if hovering {
-                                        NSCursor.resizeLeftRight.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
-                                }
-                                .gesture(
-                                    DragGesture(minimumDistance: 1)
-                                        .onChanged { value in
-                                            let base = dragStartRatio ?? splitRatio
-                                            if dragStartRatio == nil { dragStartRatio = base }
-                                            let nextRatio = base + (value.translation.width / totalWidth)
-                                            let minRatio = 340 / totalWidth
-                                            let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
-                                            splitRatio = min(max(nextRatio, minRatio), maxRatio)
-                                        }
-                                        .onEnded { _ in
-                                            dragStartRatio = nil
-                                        }
-                                )
-                        }
-                }
-
-                GanttChartView(
-                    viewModel: vm,
-                    scrollSync: scrollSync
-                )
-                .frame(width: ganttWidth)
-                .clipped()
-                .opacity(vm.viewMode == .listOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .listOnly)
-            }
-            .animation(.snappy(duration: 0.24, extraBounce: 0), value: vm.viewMode)
-        }
+        WorkspaceSplitView(
+            viewModel: vm,
+            viewMode: vm.viewMode,
+            scrollSync: scrollSync,
+            onAddDependency: { dependencyTargetID = $0 }
+        )
     }
 
     private func syncViewModel() {
@@ -442,6 +373,90 @@ extension Notification.Name {
 
 private struct IdentifiableUUID: Identifiable {
     let id: UUID
+}
+
+private struct WorkspaceSplitView: NSViewControllerRepresentable {
+    let viewModel: ProjectViewModel
+    let viewMode: WorkspaceViewMode
+    let scrollSync: ScrollSyncState
+    let onAddDependency: (UUID) -> Void
+
+    final class Coordinator {
+        var lastDocID: UUID?
+        var lastViewMode: WorkspaceViewMode?
+        var listItem: NSSplitViewItem?
+        var ganttItem: NSSplitViewItem?
+        var listHost: NSHostingController<TaskListView>?
+        var ganttHost: NSHostingController<GanttChartView>?
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSViewController(context: Context) -> NSSplitViewController {
+        let controller = NSSplitViewController()
+        controller.splitView.isVertical = true
+        controller.splitView.dividerStyle = .thin
+
+        let listHost = NSHostingController(rootView: TaskListView(
+            viewModel: viewModel,
+            scrollSync: scrollSync,
+            onAddDependency: onAddDependency
+        ))
+        let ganttHost = NSHostingController(rootView: GanttChartView(
+            viewModel: viewModel,
+            scrollSync: scrollSync
+        ))
+
+        let listItem = NSSplitViewItem(viewController: listHost)
+        listItem.canCollapse = true
+        listItem.minimumThickness = 340
+        listItem.holdingPriority = .defaultLow
+        listItem.isCollapsed = (viewMode == .ganttOnly)
+
+        let ganttItem = NSSplitViewItem(viewController: ganttHost)
+        ganttItem.canCollapse = true
+        ganttItem.minimumThickness = 360
+        ganttItem.holdingPriority = .defaultLow
+        ganttItem.isCollapsed = (viewMode == .listOnly)
+
+        controller.addSplitViewItem(listItem)
+        controller.addSplitViewItem(ganttItem)
+
+        context.coordinator.lastDocID = viewModel.document.id
+        context.coordinator.lastViewMode = viewMode
+        context.coordinator.listItem = listItem
+        context.coordinator.ganttItem = ganttItem
+        context.coordinator.listHost = listHost
+        context.coordinator.ganttHost = ganttHost
+        return controller
+    }
+
+    func updateNSViewController(_ nsViewController: NSSplitViewController, context: Context) {
+        if context.coordinator.lastDocID != viewModel.document.id {
+            context.coordinator.lastDocID = viewModel.document.id
+            context.coordinator.listHost?.rootView = TaskListView(
+                viewModel: viewModel,
+                scrollSync: scrollSync,
+                onAddDependency: onAddDependency
+            )
+            context.coordinator.ganttHost?.rootView = GanttChartView(
+                viewModel: viewModel,
+                scrollSync: scrollSync
+            )
+        }
+
+        if context.coordinator.lastViewMode != viewMode {
+            context.coordinator.lastViewMode = viewMode
+            guard let listItem = context.coordinator.listItem,
+                  let ganttItem = context.coordinator.ganttItem else { return }
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.22
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                listItem.animator().isCollapsed = (viewMode == .ganttOnly)
+                ganttItem.animator().isCollapsed = (viewMode == .listOnly)
+            }
+        }
+    }
 }
 
 private struct WindowSizeController: NSViewRepresentable {
