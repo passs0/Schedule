@@ -239,19 +239,13 @@ struct MainWindowView: View {
                 }
                 .help("Import Microsoft Project XML or Schedule File")
 
-                Menu {
-                    ForEach(ExportFormat.allCases) { format in
-                        Button {
-                            handleExport(format: format, viewModel: vm)
-                        } label: {
-                            Label(LocalizedStringKey(format.rawValue), systemImage: format.systemImage)
-                        }
+                Button {
+                    ExportMenuPresenter.show { format in
+                        handleExport(format: format, viewModel: vm)
                     }
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
-                        .imageScale(.large)
                 }
-                .menuIndicator(.hidden)
                 .help("Export Schedule (Excel, Numbers, Microsoft Project XML)")
             }
 

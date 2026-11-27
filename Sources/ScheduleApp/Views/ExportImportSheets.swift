@@ -34,6 +34,53 @@ enum ExportFormat: String, CaseIterable, Identifiable {
 }
 
 @MainActor
+enum ExportMenuPresenter {
+    private final class MenuTarget: NSObject {
+        let onSelect: (ExportFormat) -> Void
+        init(onSelect: @escaping (ExportFormat) -> Void) {
+            self.onSelect = onSelect
+        }
+        @objc func handleSelect(_ sender: NSMenuItem) {
+            guard let format = sender.representedObject as? ExportFormat else { return }
+            onSelect(format)
+        }
+    }
+
+    // Retained while the modal menu is tracking
+    private static var activeTarget: MenuTarget?
+
+    static func show(onSelect: @escaping (ExportFormat) -> Void) {
+        let target = MenuTarget(onSelect: onSelect)
+        activeTarget = target
+
+        let menu = NSMenu(title: "Export")
+        for format in ExportFormat.allCases {
+            let item = NSMenuItem(
+                title: NSLocalizedString(format.rawValue, comment: ""),
+                action: #selector(MenuTarget.handleSelect(_:)),
+                keyEquivalent: ""
+            )
+            item.target = target
+            item.representedObject = format
+            item.image = NSImage(systemSymbolName: format.systemImage, accessibilityDescription: nil)
+            menu.addItem(item)
+        }
+
+        if let event = NSApp.currentEvent,
+           let window = event.window,
+           let themeFrame = window.contentView?.superview,
+           let hitView = themeFrame.hitTest(event.locationInWindow) {
+            let y = hitView.isFlipped ? hitView.bounds.maxY + 4 : -4
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: y), in: hitView)
+        } else {
+            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        }
+
+        activeTarget = nil
+    }
+}
+
+@MainActor
 enum FileDialogs {
     static func saveScheduleDocument(_ document: ProjectDocument, existingURL: URL?) -> (url: URL?, error: String?) {
         let targetURL: URL
