@@ -1,10 +1,21 @@
 import Foundation
 
+/// Controls whether tasks are scheduled forward from `projectStartDate`
+/// or backward (As Late As Possible) from `targetFinishDate`.
+public enum SchedulingDirection: String, Codable, CaseIterable, Identifiable, Sendable {
+    case fromStart
+    case fromTargetFinish
+
+    public var id: String { rawValue }
+}
+
 /// The root local-first document model for a Schedule project.
 public struct ProjectDocument: Codable, Identifiable, Equatable, Hashable, Sendable {
     public var id: UUID
     public var name: String
     public var projectStartDate: CalendarDay
+    public var schedulingDirection: SchedulingDirection
+    public var targetFinishDate: CalendarDay?
     public var workingCalendar: WorkingCalendar
     public var calendars: [NamedWorkingCalendar]
     public var tasks: [ScheduleTask]
@@ -17,6 +28,8 @@ public struct ProjectDocument: Codable, Identifiable, Equatable, Hashable, Senda
         id: UUID = UUID(),
         name: String = "Untitled Project",
         projectStartDate: CalendarDay = .today,
+        schedulingDirection: SchedulingDirection = .fromStart,
+        targetFinishDate: CalendarDay? = nil,
         workingCalendar: WorkingCalendar = .standard,
         calendars: [NamedWorkingCalendar] = NamedWorkingCalendar.defaultPresets(),
         tasks: [ScheduleTask] = [],
@@ -28,6 +41,8 @@ public struct ProjectDocument: Codable, Identifiable, Equatable, Hashable, Senda
         self.id = id
         self.name = name
         self.projectStartDate = workingCalendar.snapToWorkingDay(projectStartDate, forward: true)
+        self.schedulingDirection = schedulingDirection
+        self.targetFinishDate = targetFinishDate.map { workingCalendar.snapToWorkingDay($0, forward: false) }
         self.workingCalendar = workingCalendar
         self.calendars = calendars
         self.tasks = tasks
@@ -42,6 +57,8 @@ public struct ProjectDocument: Codable, Identifiable, Equatable, Hashable, Senda
         id = try c.decode(UUID.self, forKey: .id)
         name = try c.decode(String.self, forKey: .name)
         projectStartDate = try c.decode(CalendarDay.self, forKey: .projectStartDate)
+        schedulingDirection = try c.decodeIfPresent(SchedulingDirection.self, forKey: .schedulingDirection) ?? .fromStart
+        targetFinishDate = try c.decodeIfPresent(CalendarDay.self, forKey: .targetFinishDate)
         workingCalendar = try c.decode(WorkingCalendar.self, forKey: .workingCalendar)
         calendars = try c.decodeIfPresent([NamedWorkingCalendar].self, forKey: .calendars) ?? NamedWorkingCalendar.defaultPresets()
         tasks = try c.decode([ScheduleTask].self, forKey: .tasks)

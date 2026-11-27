@@ -184,6 +184,16 @@
 "Changes take effect after relaunching Schedule." = "變更會在重新啟動 Schedule 後生效。";
 "Relaunch Now" = "立即重新啟動";
 
+/* Schedule Anchor / Backward Scheduling */
+"Schedule From" = "排程基準";
+"Start Date" = "開始日期";
+"Target Finish" = "目標完成日";
+"Start:" = "開始：";
+"Target:" = "目標：";
+"Schedule from Start Date or work backwards from a Target Finish Date" = "選擇從開始日期順推，或從目標完成日逆推排程";
+"Works backwards from the target finish date to show when each task must start." = "從目標完成日逆推，計算各項任務最晚必須開始的日期。";
+"Schedules tasks forward from the project start date." = "從專案開始日期順向推算各項任務的排程。";
+
 /* Alerts */
 "OK" = "好";
 "Circular Dependency" = "循環相依";

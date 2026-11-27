@@ -247,20 +247,24 @@ public final class ProjectViewModel {
         let previous = document
         var next = document
         mutate(&next)
-        if let changed = changedIDs, !changed.isEmpty {
+        if let changed = changedIDs, !changed.isEmpty, next.schedulingDirection == .fromStart {
             next.tasks = SchedulingEngine.recalculateIncremental(
                 tasks: next.tasks,
                 changedTaskIDs: changed,
                 projectStart: next.projectStartDate,
                 calendar: next.workingCalendar,
-                namedCalendars: next.calendars
+                namedCalendars: next.calendars,
+                schedulingDirection: next.schedulingDirection,
+                targetFinishDate: next.targetFinishDate
             )
         } else {
             next.tasks = SchedulingEngine.recalculateAll(
                 tasks: next.tasks,
                 projectStart: next.projectStartDate,
                 calendar: next.workingCalendar,
-                namedCalendars: next.calendars
+                namedCalendars: next.calendars,
+                schedulingDirection: next.schedulingDirection,
+                targetFinishDate: next.targetFinishDate
             )
         }
         next.modifiedAt = Date()
@@ -298,6 +302,23 @@ public final class ProjectViewModel {
             }
         }
         undoManager?.setActionName(actionName)
+    }
+
+    public func setScheduleAnchor(direction: SchedulingDirection, date: CalendarDay) {
+        let actionName = direction == .fromTargetFinish ? "Schedule from Target Finish" : "Schedule from Start Date"
+        applyMutation(actionName: actionName) { doc in
+            doc.schedulingDirection = direction
+            switch direction {
+            case .fromStart:
+                let snapped = doc.workingCalendar.snapToWorkingDay(date, forward: true)
+                doc.projectStartDate = snapped
+                for idx in doc.tasks.indices where !doc.tasks[idx].isManuallyScheduled && doc.tasks[idx].dependencies.isEmpty {
+                    doc.tasks[idx].startDate = snapped
+                }
+            case .fromTargetFinish:
+                doc.targetFinishDate = doc.workingCalendar.snapToWorkingDay(date, forward: false)
+            }
+        }
     }
 
     public func addTask(after anchorID: UUID? = nil, isMilestone: Bool = false, asSubtask: Bool = false) {

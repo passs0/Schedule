@@ -12,6 +12,7 @@ struct TaskListView: View {
     @State private var draggingTaskID: UUID?
     @State private var searchText: String = ""
     @State private var activePopover: CellPopover?
+    @State private var showingScheduleAnchorPopover = false
 
     private enum CellPopover: Identifiable, Equatable {
         case start(UUID)
@@ -116,6 +117,36 @@ struct TaskListView: View {
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
 
             Spacer()
+
+            Button {
+                showingScheduleAnchorPopover.toggle()
+            } label: {
+                let isBackward = viewModel.document.schedulingDirection == .fromTargetFinish
+                let anchorDay = isBackward
+                    ? (viewModel.document.targetFinishDate ?? viewModel.document.tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate)
+                    : viewModel.document.projectStartDate
+                HStack(spacing: 5) {
+                    Image(systemName: isBackward ? "arrow.backward.to.line" : "arrow.forward.to.line")
+                        .font(.caption2.weight(.semibold))
+                    Text(isBackward ? "Target:" : "Start:")
+                        .font(.caption.weight(.medium))
+                    Text(Self.shortDateFormatter.string(from: anchorDay.toDate()))
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                }
+                .foregroundStyle(isBackward ? ScheduleTheme.accent : .secondary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    (isBackward ? ScheduleTheme.accent.opacity(0.14) : Color(nsColor: .controlBackgroundColor)),
+                    in: Capsule()
+                )
+            }
+            .buttonStyle(.plain)
+            .help("Schedule from Start Date or work backwards from a Target Finish Date")
+            .popover(isPresented: $showingScheduleAnchorPopover, arrowEdge: .bottom) {
+                ScheduleAnchorPopover(viewModel: viewModel)
+            }
+
             if let summary = viewModel.lastScheduleSummary {
                 Label(summary, systemImage: "sparkles")
                     .font(.caption.weight(.medium))
@@ -837,6 +868,67 @@ private struct DRIPopoverView: View {
         }
         .padding(12)
         .frame(width: 240)
+    }
+}
+
+private struct ScheduleAnchorPopover: View {
+    @Bindable var viewModel: ProjectViewModel
+    @State private var direction: SchedulingDirection
+    @State private var selectedDate: Date
+
+    init(viewModel: ProjectViewModel) {
+        self.viewModel = viewModel
+        let dir = viewModel.document.schedulingDirection
+        _direction = State(initialValue: dir)
+        let day: CalendarDay = dir == .fromTargetFinish
+            ? (viewModel.document.targetFinishDate ?? viewModel.document.tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate)
+            : viewModel.document.projectStartDate
+        _selectedDate = State(initialValue: day.toDate())
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Schedule From")
+                .font(.callout.weight(.semibold))
+
+            Picker("", selection: $direction) {
+                Text("Start Date").tag(SchedulingDirection.fromStart)
+                Text("Target Finish").tag(SchedulingDirection.fromTargetFinish)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .onChange(of: direction) { _, newDir in
+                let defaultDay: CalendarDay = newDir == .fromTargetFinish
+                    ? (viewModel.document.targetFinishDate ?? viewModel.document.tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate)
+                    : viewModel.document.projectStartDate
+                selectedDate = defaultDay.toDate()
+                viewModel.setScheduleAnchor(direction: newDir, date: defaultDay)
+            }
+
+            DatePicker(
+                direction == .fromTargetFinish ? "Target Finish" : "Start Date",
+                selection: $selectedDate,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.compact)
+            .onChange(of: selectedDate) { _, newDate in
+                viewModel.setScheduleAnchor(
+                    direction: direction,
+                    date: CalendarDay(date: newDate, calendar: .current)
+                )
+            }
+
+            Text(
+                direction == .fromTargetFinish
+                    ? "Works backwards from the target finish date to show when each task must start."
+                    : "Schedules tasks forward from the project start date."
+            )
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(width: 280)
     }
 }
 

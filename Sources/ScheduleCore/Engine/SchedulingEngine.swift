@@ -36,7 +36,9 @@ public enum SchedulingEngine {
         tasks: [ScheduleTask],
         projectStart: CalendarDay,
         calendar: WorkingCalendar,
-        namedCalendars: [NamedWorkingCalendar] = []
+        namedCalendars: [NamedWorkingCalendar] = [],
+        schedulingDirection: SchedulingDirection = .fromStart,
+        targetFinishDate: CalendarDay? = nil
     ) -> [ScheduleTask] {
         let allIDs = Set(tasks.map(\.id))
         return recalculateIncremental(
@@ -44,7 +46,9 @@ public enum SchedulingEngine {
             changedTaskIDs: allIDs,
             projectStart: projectStart,
             calendar: calendar,
-            namedCalendars: namedCalendars
+            namedCalendars: namedCalendars,
+            schedulingDirection: schedulingDirection,
+            targetFinishDate: targetFinishDate
         )
     }
 
@@ -55,7 +59,9 @@ public enum SchedulingEngine {
         changedTaskIDs: Set<UUID>,
         projectStart: CalendarDay,
         calendar: WorkingCalendar,
-        namedCalendars: [NamedWorkingCalendar] = []
+        namedCalendars: [NamedWorkingCalendar] = [],
+        schedulingDirection: SchedulingDirection = .fromStart,
+        targetFinishDate: CalendarDay? = nil
     ) -> [ScheduleTask] {
         guard !tasks.isEmpty else { return [] }
 
@@ -103,48 +109,98 @@ public enum SchedulingEngine {
         let topoOrder = topologicalOrder(ids: orderedIDs, taskMap: taskMap)
         let snappedProjectStart = calendar.snapToWorkingDay(projectStart, forward: true)
 
-        // Forward pass on affected non-summary tasks.
-        for id in topoOrder {
-            guard affected.contains(id), var task = taskMap[id] else { continue }
-            // Skip summary groups during forward pass; they roll up from children.
-            if let children = childrenMap[id], !children.isEmpty {
-                continue
-            }
-
-            let taskCal = effectiveCalendar(for: task)
-            let duration = task.isMilestone ? 0 : max(1, task.durationDays)
-            task.durationDays = duration
-
-            var constrainedStart: CalendarDay
-            if task.isManuallyScheduled {
-                constrainedStart = taskCal.snapToWorkingDay(task.startDate, forward: true)
-            } else if task.dependencies.isEmpty {
-                constrainedStart = max(snappedProjectStart, taskCal.snapToWorkingDay(task.startDate, forward: true))
-            } else {
-                constrainedStart = snappedProjectStart
-            }
-
-            for dep in task.dependencies {
-                guard let pred = taskMap[dep.predecessorID] else { continue }
-                let depStart = earliestStart(
-                    for: task,
-                    duration: duration,
-                    dependingOn: pred,
-                    dependency: dep,
-                    calendar: taskCal
-                )
-                if depStart > constrainedStart {
-                    constrainedStart = depStart
+        if schedulingDirection == .fromTargetFinish {
+            let anchorFinish = calendar.snapToWorkingDay(
+                targetFinishDate ?? tasks.map(\.endDate).max() ?? projectStart,
+                forward: false
+            )
+            var outgoing: [UUID: [(successorID: UUID, dep: TaskDependency)]] = [:]
+            for id in orderedIDs {
+                guard let task = taskMap[id] else { continue }
+                for dep in task.dependencies where taskMap[dep.predecessorID] != nil {
+                    outgoing[dep.predecessorID, default: []].append((id, dep))
                 }
             }
 
-            constrainedStart = taskCal.snapToWorkingDay(constrainedStart, forward: true)
-            task.startDate = constrainedStart
-            task.endDate = task.isMilestone
-                ? constrainedStart
-                : taskCal.endDate(startingOn: constrainedStart, durationDays: duration)
+            for id in topoOrder.reversed() {
+                guard var task = taskMap[id] else { continue }
+                if let children = childrenMap[id], !children.isEmpty { continue }
 
-            taskMap[id] = task
+                let taskCal = effectiveCalendar(for: task)
+                let duration = task.isMilestone ? 0 : max(1, task.durationDays)
+                task.durationDays = duration
+
+                var constrainedEnd = taskCal.snapToWorkingDay(anchorFinish, forward: false)
+                if task.isManuallyScheduled {
+                    let pinnedStart = taskCal.snapToWorkingDay(task.startDate, forward: true)
+                    constrainedEnd = task.isMilestone ? pinnedStart : taskCal.endDate(startingOn: pinnedStart, durationDays: duration)
+                }
+
+                for (succID, dep) in outgoing[id] ?? [] {
+                    guard let succ = taskMap[succID] else { continue }
+                    let candidateEnd = latestEnd(
+                        for: task,
+                        duration: duration,
+                        before: succ,
+                        dependency: dep,
+                        calendar: taskCal
+                    )
+                    if candidateEnd < constrainedEnd {
+                        constrainedEnd = candidateEnd
+                    }
+                }
+
+                constrainedEnd = taskCal.snapToWorkingDay(constrainedEnd, forward: false)
+                task.endDate = constrainedEnd
+                task.startDate = task.isMilestone
+                    ? constrainedEnd
+                    : taskCal.startDate(endingOn: constrainedEnd, durationDays: duration)
+                taskMap[id] = task
+            }
+        } else {
+            // Forward pass on affected non-summary tasks.
+            for id in topoOrder {
+                guard affected.contains(id), var task = taskMap[id] else { continue }
+                // Skip summary groups during forward pass; they roll up from children.
+                if let children = childrenMap[id], !children.isEmpty {
+                    continue
+                }
+
+                let taskCal = effectiveCalendar(for: task)
+                let duration = task.isMilestone ? 0 : max(1, task.durationDays)
+                task.durationDays = duration
+
+                var constrainedStart: CalendarDay
+                if task.isManuallyScheduled {
+                    constrainedStart = taskCal.snapToWorkingDay(task.startDate, forward: true)
+                } else if task.dependencies.isEmpty {
+                    constrainedStart = max(snappedProjectStart, taskCal.snapToWorkingDay(task.startDate, forward: true))
+                } else {
+                    constrainedStart = snappedProjectStart
+                }
+
+                for dep in task.dependencies {
+                    guard let pred = taskMap[dep.predecessorID] else { continue }
+                    let depStart = earliestStart(
+                        for: task,
+                        duration: duration,
+                        dependingOn: pred,
+                        dependency: dep,
+                        calendar: taskCal
+                    )
+                    if depStart > constrainedStart {
+                        constrainedStart = depStart
+                    }
+                }
+
+                constrainedStart = taskCal.snapToWorkingDay(constrainedStart, forward: true)
+                task.startDate = constrainedStart
+                task.endDate = task.isMilestone
+                    ? constrainedStart
+                    : taskCal.endDate(startingOn: constrainedStart, durationDays: duration)
+
+                taskMap[id] = task
+            }
         }
 
         // Bottom-up roll-up for summary groups (deepest groups first).
@@ -220,6 +276,28 @@ public enum SchedulingEngine {
                 return targetEnd
             }
             return calendar.startDate(endingOn: targetEnd, durationDays: duration)
+        }
+    }
+
+    private static func latestEnd(
+        for task: ScheduleTask,
+        duration: Int,
+        before successor: ScheduleTask,
+        dependency: TaskDependency,
+        calendar: WorkingCalendar
+    ) -> CalendarDay {
+        switch dependency.type {
+        case .finishToStart:
+            let offset = task.isMilestone ? -dependency.lagDays : -(1 + dependency.lagDays)
+            return calendar.snapToWorkingDay(calendar.addWorkingDays(offset, to: successor.startDate), forward: false)
+        case .startToStart:
+            let candidateStart = calendar.snapToWorkingDay(calendar.addWorkingDays(-dependency.lagDays, to: successor.startDate), forward: false)
+            return task.isMilestone ? candidateStart : calendar.endDate(startingOn: candidateStart, durationDays: duration)
+        case .finishToFinish:
+            return calendar.snapToWorkingDay(calendar.addWorkingDays(-dependency.lagDays, to: successor.endDate), forward: false)
+        case .startToFinish:
+            let candidateStart = calendar.snapToWorkingDay(calendar.addWorkingDays(-dependency.lagDays, to: successor.endDate), forward: false)
+            return task.isMilestone ? candidateStart : calendar.endDate(startingOn: candidateStart, durationDays: duration)
         }
     }
 
