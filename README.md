@@ -21,9 +21,10 @@
 
 ## What it does
 
-- **Pages-style Welcome & Templates** — Launch straight into a compact Welcome screen to open recent files, import task lists, or click **New Document… (`⌘N`)** to start from **Blank**, **Hardware & Electronics NPI**, **Software & Firmware Release**, **System Cutover & Migration**, or **Compliance & Lab Certification**.
+- **Pages-style Welcome & Templates** — Launch straight into a compact Welcome screen to open recent files, import task lists, or click **New Document… (`⌘N`)** to start from **Blank**, **Hardware Product Launch**, **Software & Firmware Release**, **System Cutover & Migration**, or **Compliance & Lab Certification**.
 - **Plain-English dependencies** — Express relationships naturally (like `After Architecture Freeze` or `2d after Schematic Capture`) with full Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish, and lag support.
 - **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with synchronized Split View scrolling, Days/Weeks/Months/Quarters zoom, Critical Path highlighting, and full `⌘Z` / `⇧⌘Z` Undo/Redo.
+- **Slideshow-ready Gantt export** — Export the full Gantt timeline as a lossless vector **PDF** (`.pdf`) for Keynote or a `@2x` **High-DPI PNG** (`.png`) for PowerPoint, Google Slides, and the web.
 - **Working calendars & holidays** — Customize working days per task, team, or project and import public or team holidays from Apple Calendar or `.ics` files.
 - **Project versions & diff** — Save schedule snapshots and compare timeline, duration, and dependency changes across revisions.
 - **Microsoft Project `.mpp` / `.xml` & spreadsheet import** — Directly import binary Microsoft Project `.mpp` files (MPP14+ / Project 2010 and later) and import/export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.

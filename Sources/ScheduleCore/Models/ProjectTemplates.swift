@@ -14,7 +14,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
     public var title: String {
         switch self {
         case .blank: return "Blank"
-        case .hardwareNPI: return "Hardware & Electronics NPI"
+        case .hardwareNPI: return "Hardware Product Launch"
         case .softwareRelease: return "Software & Firmware Release"
         case .systemCutover: return "System Cutover & Migration"
         case .complianceAudit: return "Compliance & Lab Certification"
@@ -27,7 +27,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
         case .hardwareNPI: return "EVT → MP"
         case .softwareRelease: return "Parallel Sprints"
         case .systemCutover: return "Pinned Window"
-        case .complianceAudit: return "Lab & TCB"
+        case .complianceAudit: return "Lab & Audit"
         }
     }
 
@@ -36,11 +36,11 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
         case .blank:
             return "Clean slate with a single kickoff task."
         case .hardwareNPI:
-            return "Concept to mass production across EE, ME, Shenzhen CM, and compliance lab calendars."
+            return "Concept to mass production across EE, ME, 6-day factory CM, and compliance."
         case .softwareRelease:
             return "Architecture, parallel backend & client tracks, hardening, security audit, and canary GA."
         case .systemCutover:
-            return "Landing zone, CDC replication, dress rehearsal, pinned 24x7 cutover window, and hypercare."
+            return "Landing zone, CDC replication, dress rehearsal, pinned 24×7 cutover window, and hypercare."
         case .complianceAudit:
             return "Technical file, internal pre-scans, accredited lab testing, RoHS/REACH, and TCB filing."
         }
@@ -72,17 +72,17 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
 
         case .hardwareNPI:
             // Only the factory has a different working calendar (6-day Mon–Sat); teams are tracked via Owner.
-            let szCM = NamedWorkingCalendar(
-                name: "Shenzhen Factory (6-Day)",
+            let cmCal = NamedWorkingCalendar(
+                name: "Factory / CM (6-Day)",
                 owner: "Manufacturing",
                 workingCalendar: WorkingCalendar(workingWeekdays: [2, 3, 4, 5, 6, 7])
             )
 
             return buildTemplate(
-                name: "Hardware Product — EVT to Mass Production",
+                name: title,
                 start: start,
                 cal: cal,
-                calendars: [szCM],
+                calendars: [cmCal],
                 phases: [
                     PhaseSpec("Architecture & Concept", "System requirements, block diagram, and architecture freeze.", [
                         TaskSpec("prd", "Product Requirements & Target Spec", 4, owner: "Systems"),
@@ -94,24 +94,24 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("bom", "Long-Lead Component Sourcing & BOM", 7, after: ["arch_freeze"], owner: "Supply Chain"),
                         TaskSpec("pcb", "PCB Layout, Stackup & Impedance Control", 8, after: ["sch"], owner: "EE"),
                         TaskSpec("dfm", "DFM / DFA Review & Gerber Release", 2, after: ["pcb"], owner: "EE"),
-                        TaskSpec("evt_pcba", "EVT Bare Board Fab & PCBA", 7, after: ["dfm", "bom"], lag: 2, owner: "Factory CM", cal: szCM.id)
+                        TaskSpec("evt_pcba", "EVT Bare Board Fab & PCBA", 7, after: ["dfm", "bom"], lag: 2, owner: "Factory CM", cal: cmCal.id)
                     ]),
                     PhaseSpec("Mechanical & Materials", "Enclosure CAD, CMF spec, FEA simulation, and soft tooling.", [
                         TaskSpec("cad", "Mechanical CAD & Enclosure Design", 10, after: ["arch_freeze"], owner: "ME"),
                         TaskSpec("cmf", "Materials, Finish & CMF Specification", 6, after: ["arch_freeze"], owner: "ID / CMF"),
                         TaskSpec("fea", "Thermal & Drop FEA Simulation", 4, after: ["cad"], owner: "ME"),
-                        TaskSpec("cnc", "CNC & Soft Tooling EVT Enclosures", 8, after: ["fea", "cmf"], owner: "Factory CM", cal: szCM.id)
+                        TaskSpec("cnc", "CNC & Soft Tooling EVT Enclosures", 8, after: ["fea", "cmf"], owner: "Factory CM", cal: cmCal.id)
                     ]),
                     PhaseSpec("EVT — Engineering Validation", "30-unit EVT assembly, bring-up, and RF/functional validation.", [
-                        TaskSpec("evt_asm", "EVT Unit Assembly (30 Units)", 3, after: ["evt_pcba", "cnc"], owner: "Factory CM", cal: szCM.id),
+                        TaskSpec("evt_asm", "EVT Unit Assembly (30 Units)", 3, after: ["evt_pcba", "cnc"], owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("bringup", "Board Bring-Up & Firmware Integration", 5, after: ["evt_asm"], owner: "Firmware"),
                         TaskSpec("evt_rf", "EVT Functional & RF Bench Validation", 5, after: ["bringup"], owner: "EE"),
                         TaskSpec("evt_gate", "EVT Exit Gate", 0, milestone: true, after: ["evt_rf"], owner: "Systems")
                     ]),
                     PhaseSpec("DVT — Design Validation", "Hard tooling T1/T2, Rev B PCBA, and 100-unit DVT reliability.", [
-                        TaskSpec("mold", "Hard Tooling & Injection Mold (T1 / T2)", 12, after: ["evt_gate"], owner: "Factory CM", cal: szCM.id),
-                        TaskSpec("revb", "PCB Layout Rev B & PCBA (100 Units)", 10, after: ["evt_gate"], owner: "Factory CM", cal: szCM.id),
-                        TaskSpec("dvt_build", "DVT Pilot Build & Reliability Testing", 10, after: ["mold", "revb"], owner: "Factory CM", cal: szCM.id),
+                        TaskSpec("mold", "Hard Tooling & Injection Mold (T1 / T2)", 12, after: ["evt_gate"], owner: "Factory CM", cal: cmCal.id),
+                        TaskSpec("revb", "PCB Layout Rev B & PCBA (100 Units)", 10, after: ["evt_gate"], owner: "Factory CM", cal: cmCal.id),
+                        TaskSpec("dvt_build", "DVT Pilot Build & Reliability Testing", 10, after: ["mold", "revb"], owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("dvt_gate", "DVT Exit Gate", 0, milestone: true, after: ["dvt_build"], owner: "Systems")
                     ]),
                     PhaseSpec("Compliance & Certification", "EMC/RF chamber testing, FCC/CE/UL, and RoHS/REACH declarations.", [
@@ -122,9 +122,9 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                     ]),
                     PhaseSpec("PVT & Mass Production", "Packaging, PVT line qualification, golden sample, and MP ramp.", [
                         TaskSpec("pkg", "Packaging, Regulatory Labels & Inserts", 7, after: ["dvt_gate"], owner: "ME"),
-                        TaskSpec("pvt", "PVT Line Trial & Yield Qualification", 7, after: ["dvt_gate", "pkg"], lag: 2, owner: "Factory CM", cal: szCM.id),
+                        TaskSpec("pvt", "PVT Line Trial & Yield Qualification", 7, after: ["dvt_gate", "pkg"], lag: 2, owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("golden", "Golden Sample Sign-Off", 3, after: ["pvt", "reg_gate"], owner: "Systems"),
-                        TaskSpec("mp", "Mass Production Ramp (MP)", 0, milestone: true, after: ["golden"], owner: "Factory CM", cal: szCM.id)
+                        TaskSpec("mp", "Mass Production Ramp (MP)", 0, milestone: true, after: ["golden"], owner: "Factory CM", cal: cmCal.id)
                     ])
                 ]
             )
