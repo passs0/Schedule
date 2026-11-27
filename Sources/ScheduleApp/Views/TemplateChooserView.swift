@@ -107,44 +107,48 @@ struct WelcomeView: View {
 
                 if !recentProjects.isEmpty {
                     let visibleRecent = Array(recentProjects.prefix(4))
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Recent Projects")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
+                    Form {
+                        Section("Recent Projects") {
+                            ForEach(visibleRecent) { project in
+                                Button {
+                                    onOpenProject(project.id)
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "calendar.day.timeline.leading")
+                                            .font(.callout)
+                                            .foregroundStyle(ScheduleTheme.accent)
+                                            .frame(width: 22)
 
-                        List(visibleRecent) { project in
-                            Button {
-                                onOpenProject(project.id)
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "calendar.day.timeline.leading")
-                                        .font(.callout)
-                                        .foregroundStyle(ScheduleTheme.accent)
-                                        .frame(width: 22)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(project.name)
+                                                .font(.callout.weight(.medium))
+                                                .foregroundStyle(.primary)
+                                            Text("\(project.tasks.count) items")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
 
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(project.name)
-                                            .font(.callout.weight(.medium))
-                                        Text("\(project.tasks.count) items")
+                                        Spacer()
+
+                                        Text(project.modifiedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
                                             .font(.caption2)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(.tertiary)
+
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.quaternary)
                                     }
-
-                                    Spacer()
-
-                                    Text(project.modifiedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
+                                    .contentShape(Rectangle())
                                 }
-                                .contentShape(Rectangle())
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
-                        .listStyle(.bordered(alternatesRowBackgrounds: false))
-                        .frame(height: CGFloat(visibleRecent.count) * 44 + 8)
                     }
-                    .frame(maxWidth: 430)
+                    .formStyle(.grouped)
+                    .scrollContentBackground(.hidden)
+                    .scrollDisabled(true)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 460)
                 }
             }
             .padding(.horizontal, 32)
