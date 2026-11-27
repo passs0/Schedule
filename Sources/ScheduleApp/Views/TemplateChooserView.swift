@@ -9,123 +9,61 @@ struct WelcomeView: View {
     let onOpenFile: () -> Void
     let onNewDocument: () -> Void
 
-    @State private var hoveredProjectID: UUID?
-
-    private static let modifiedFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        df.doesRelativeDateFormatting = true
-        return df
-    }()
-
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 20)
+        VStack(spacing: 20) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 88, height: 88)
+                .shadow(color: .black.opacity(0.16), radius: 10, x: 0, y: 4)
 
-            VStack(spacing: 18) {
-                VStack(spacing: 8) {
-                    Image(nsImage: NSApp.applicationIconImage)
-                        .resizable()
-                        .frame(width: 60, height: 60)
+            VStack(spacing: 4) {
+                Text("Schedule")
+                    .font(.title.weight(.semibold))
+                    .foregroundStyle(.primary)
 
-                    Text("Welcome to Schedule")
-                        .font(.title2.weight(.semibold))
-
-                    Text("Open an existing project, import a task list, or create a new schedule.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                if !recentProjects.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Recent Projects")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
-
-                        VStack(spacing: 0) {
-                            let visibleRecent = Array(recentProjects.prefix(4))
-                            ForEach(visibleRecent) { project in
-                                Button {
-                                    onOpenProject(project.id)
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "calendar.day.timeline.leading")
-                                            .font(.callout)
-                                            .foregroundStyle(ScheduleTheme.accent)
-                                            .frame(width: 22)
-
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(project.name)
-                                                .font(.callout.weight(.medium))
-                                                .foregroundStyle(.primary)
-                                            Text("\(project.tasks.count) items")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        Text(Self.modifiedFormatter.string(from: project.modifiedAt))
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 9)
-                                    .background(
-                                        hoveredProjectID == project.id
-                                            ? Color.primary.opacity(0.05)
-                                            : Color.clear
-                                    )
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .onHover { hovering in
-                                    hoveredProjectID = hovering ? project.id : (hoveredProjectID == project.id ? nil : hoveredProjectID)
-                                }
-
-                                if project.id != visibleRecent.last?.id {
-                                    Divider().padding(.leading, 44)
-                                }
-                            }
-                        }
-                        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
-                        )
-                    }
-                    .frame(maxWidth: 430)
-                }
+                Text("Open a project, import a task list, or create a new schedule")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 32)
 
-            Spacer(minLength: 20)
-
-            HStack(spacing: 12) {
-                Button {
-                    onOpenFile()
-                } label: {
-                    Label("Open File…", systemImage: "folder")
-                        .frame(minWidth: 136)
+            HStack(spacing: 10) {
+                Button(action: onNewDocument) {
+                    Label("New Document…", systemImage: "plus")
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
+
+                Button(action: onOpenFile) {
+                    Label("Open File…", systemImage: "folder")
+                }
+                .buttonStyle(.bordered)
                 .controlSize(.large)
                 .keyboardShortcut("o", modifiers: .command)
-
-                Button {
-                    onNewDocument()
-                } label: {
-                    Label("New Document…", systemImage: "plus")
-                        .frame(minWidth: 148)
-                }
-                .controlSize(.large)
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
             }
-            .padding(.bottom, 24)
+            .padding(.top, 4)
+
+            if !recentProjects.isEmpty {
+                Menu {
+                    ForEach(recentProjects.prefix(8)) { project in
+                        Button {
+                            onOpenProject(project.id)
+                        } label: {
+                            Text("\(project.name) (\(project.tasks.count) items)")
+                        }
+                    }
+                } label: {
+                    Label("Open Recent", systemImage: "clock")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .padding(.top, 2)
+            }
         }
+        .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
