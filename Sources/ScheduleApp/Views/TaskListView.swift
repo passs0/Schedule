@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 import ScheduleCore
 
@@ -711,34 +712,29 @@ struct TaskListView: View {
             let calName = viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.owner
                 .nilIfEmpty ?? viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.name
                 ?? "Default"
-            Menu {
-                Picker("Assign Calendar", selection: Binding(
-                    get: { task.calendarID },
-                    set: { newCalID in
-                        viewModel.selectTask(task.id)
-                        viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in
-                            t.calendarID = newCalID
-                        }
-                    }
-                )) {
-                    Text("Default (Mon–Fri)").tag(Optional<UUID>.none)
-                    Divider()
-                    ForEach(viewModel.document.calendars) { cal in
-                        Text(cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))")
-                            .tag(Optional(cal.id))
+            Button {
+                viewModel.selectTask(task.id)
+                CalendarMenuPresenter.show(
+                    calendars: viewModel.document.calendars,
+                    selectedID: task.calendarID
+                ) { newCalID in
+                    viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in
+                        t.calendarID = newCalID
                     }
                 }
-                .pickerStyle(.inline)
-                .labelsHidden()
             } label: {
-                Label(calName, systemImage: "calendar")
-                    .font(.caption)
-                    .lineLimit(1)
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                    Text(calName)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
         }
     }
 }
@@ -918,6 +914,66 @@ private struct EquatableRowsView<Content: View>: View, Equatable {
 
     var body: some View {
         content()
+    }
+}
+
+@MainActor
+private enum CalendarMenuPresenter {
+    private final class MenuTarget: NSObject {
+        let onSelect: (UUID?) -> Void
+        init(onSelect: @escaping (UUID?) -> Void) { self.onSelect = onSelect }
+        @objc func handleSelect(_ sender: NSMenuItem) {
+            onSelect(sender.representedObject as? UUID)
+        }
+    }
+
+    private static var activeTarget: MenuTarget?
+
+    static func show(
+        calendars: [NamedWorkingCalendar],
+        selectedID: UUID?,
+        onSelect: @escaping (UUID?) -> Void
+    ) {
+        let target = MenuTarget(onSelect: onSelect)
+        activeTarget = target
+
+        let menu = NSMenu(title: "Assign Calendar")
+        let defaultItem = NSMenuItem(
+            title: NSLocalizedString("Default (Mon–Fri)", comment: ""),
+            action: #selector(MenuTarget.handleSelect(_:)),
+            keyEquivalent: ""
+        )
+        defaultItem.target = target
+        defaultItem.representedObject = nil
+        defaultItem.state = selectedID == nil ? .on : .off
+        menu.addItem(defaultItem)
+
+        if !calendars.isEmpty {
+            menu.addItem(.separator())
+            for cal in calendars {
+                let title = cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))"
+                let item = NSMenuItem(
+                    title: title,
+                    action: #selector(MenuTarget.handleSelect(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = target
+                item.representedObject = cal.id
+                item.state = selectedID == cal.id ? .on : .off
+                menu.addItem(item)
+            }
+        }
+
+        if let event = NSApp.currentEvent,
+           let window = event.window,
+           let contentView = window.contentView {
+            let pt = contentView.convert(event.locationInWindow, from: nil)
+            menu.popUp(positioning: nil, at: pt, in: contentView)
+        } else {
+            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        }
+
+        activeTarget = nil
     }
 }
 
