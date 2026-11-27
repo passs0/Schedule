@@ -64,4 +64,6 @@ chmod +x scripts/build_app.sh
 
 - Pure-Swift MPP14+ binary layout and `Var2Data` / `TBkndCons` parsing in [`MPPBinaryParser.swift`](Sources/ScheduleCore/Interop/MPPBinaryParser.swift) are ported from [`msp-export`](https://github.com/andrewbergsma/msp-export) by Andrew Bergsma (MIT License).
 
+## Credits
+
 Built with [Google Antigravity](https://antigravity.google) — 100% AI-written code and UI, steered and tested by hand.
