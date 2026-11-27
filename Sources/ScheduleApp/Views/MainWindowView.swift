@@ -42,7 +42,7 @@ struct MainWindowView: View {
                         showingTemplateChooser = true
                     }
                 )
-                .frame(width: 560, height: 480)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .background(WindowSizeController(isWorkspaceOpen: viewModel != nil))
@@ -466,7 +466,10 @@ private struct WindowSizeController: NSViewRepresentable {
             guard let window = nsView.window else { return }
             let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             if open {
+                window.styleMask.insert(.resizable)
+                window.standardWindowButton(.zoomButton)?.isEnabled = true
                 window.minSize = NSSize(width: 960, height: 600)
+                window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
                 window.setFrame(visible, display: true, animate: false)
                 window.alphaValue = 0.88
                 NSAnimationContext.runAnimationGroup { ctx in
@@ -475,9 +478,12 @@ private struct WindowSizeController: NSViewRepresentable {
                     window.animator().alphaValue = 1.0
                 }
             } else {
-                window.minSize = NSSize(width: 560, height: 480)
+                window.styleMask.remove(.resizable)
+                window.standardWindowButton(.zoomButton)?.isEnabled = false
                 let targetW: CGFloat = 560
                 let targetH: CGFloat = 480
+                window.minSize = NSSize(width: targetW, height: targetH)
+                window.maxSize = NSSize(width: targetW, height: targetH)
                 let x = visible.midX - targetW / 2
                 let y = visible.midY - targetH / 2
                 window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: false)
