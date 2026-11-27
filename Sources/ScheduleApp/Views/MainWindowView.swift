@@ -249,7 +249,7 @@ struct MainWindowView: View {
                         ForEach(ExportFormat.allCases) { format in
                             Button {
                                 showingExportPopover = false
-                                handleExport(format: format, document: vm.document)
+                                handleExport(format: format, viewModel: vm)
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: format.systemImage)
@@ -418,8 +418,8 @@ struct MainWindowView: View {
         }
     }
 
-    private func handleExport(format: ExportFormat, document: ProjectDocument) {
-        let outcome = FileDialogs.exportProject(document, format: format)
+    private func handleExport(format: ExportFormat, viewModel: ProjectViewModel) {
+        let outcome = FileDialogs.exportProject(viewModel, format: format)
         if !outcome.success, let message = outcome.message {
             alertInfo = AlertInfo(title: "Export Notice", message: message)
         }

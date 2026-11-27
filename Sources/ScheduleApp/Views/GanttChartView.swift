@@ -28,7 +28,7 @@ struct GanttChartView: View {
         var currentPoint: CGPoint
     }
 
-    private struct BarDragState {
+    struct BarDragState {
         let taskID: UUID
         let mode: Mode
         var dayDelta: Int = 0
@@ -43,12 +43,16 @@ struct GanttChartView: View {
     private let rowHeight: CGFloat = TaskListView.rowHeight
     private let headerHeight: CGFloat = TaskListView.headerHeight
 
-    private var timelineBounds: (start: CalendarDay, totalDays: Int) {
-        let tasks = viewModel.document.tasks
-        let minDay = (tasks.map(\.startDate).min() ?? viewModel.document.projectStartDate).addingCalendarDays(-5)
-        let maxDay = (tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate.addingCalendarDays(20)).addingCalendarDays(21)
+    static func timelineBounds(for document: ProjectDocument) -> (start: CalendarDay, totalDays: Int) {
+        let tasks = document.tasks
+        let minDay = (tasks.map(\.startDate).min() ?? document.projectStartDate).addingCalendarDays(-5)
+        let maxDay = (tasks.map(\.endDate).max() ?? document.projectStartDate.addingCalendarDays(20)).addingCalendarDays(21)
         let total = max(35, minDay.calendarDays(until: maxDay) + 1)
         return (minDay, total)
+    }
+
+    private var timelineBounds: (start: CalendarDay, totalDays: Int) {
+        Self.timelineBounds(for: viewModel.document)
     }
 
     var body: some View {
@@ -146,67 +150,81 @@ struct GanttChartView: View {
 
     private func timelineHeader(start: CalendarDay, totalDays: Int) -> some View {
         Canvas { context, size in
-            let cal = Calendar.gregorianUTC
-            let today = CalendarDay.today
-
-            for offset in 0..<totalDays {
-                let day = start.addingCalendarDays(offset)
-                let x = CGFloat(offset) * dayWidth
-                let date = day.toDate(calendar: cal)
-                let weekday = day.weekday
-
-                // Weekend header tint
-                if !viewModel.document.workingCalendar.isWorkingDay(day) {
-                    context.fill(
-                        Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
-                        with: .color(Color.secondary.opacity(0.06))
-                    )
-                }
-
-                // Today highlight
-                if day == today {
-                    context.fill(
-                        Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
-                        with: .color(Color.red.opacity(0.12))
-                    )
-                }
-
-                let showLabel: Bool
-                let labelText: String
-                switch viewModel.timeScale {
-                case .days:
-                    showLabel = true
-                    if day.day == 1 {
-                        labelText = Self.weekMonthDayFormatter.string(from: date)
-                    } else {
-                        labelText = "\(day.day)"
-                    }
-                case .weeks:
-                    showLabel = (weekday == 2) // Mondays
-                    labelText = Self.weekMonthDayFormatter.string(from: date)
-                case .months:
-                    showLabel = (day.day == 1)
-                    labelText = Self.monthYearFormatter.string(from: date)
-                case .quarters:
-                    showLabel = (day.day == 1 && (day.month == 1 || day.month == 4 || day.month == 7 || day.month == 10))
-                    let q = ((day.month - 1) / 3) + 1
-                    labelText = "Q\(q) \(day.year)"
-                }
-
-                if showLabel {
-                    var tick = Path()
-                    tick.move(to: CGPoint(x: x, y: 0))
-                    tick.addLine(to: CGPoint(x: x, y: size.height))
-                    context.stroke(tick, with: .color(Color.secondary.opacity(0.22)), lineWidth: 0.5)
-
-                    let text = Text(labelText)
-                        .font(.system(size: 10, weight: .medium, design: .default))
-                        .foregroundStyle(day == today ? .red : .secondary)
-                    context.draw(text, at: CGPoint(x: x + 4, y: size.height / 2), anchor: .leading)
-                }
-            }
+            Self.drawTimelineHeader(
+                context: &context,
+                size: size,
+                start: start,
+                totalDays: totalDays,
+                dayWidth: dayWidth,
+                timeScale: viewModel.timeScale,
+                workingCalendar: viewModel.document.workingCalendar
+            )
         }
         .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    static func drawTimelineHeader(
+        context: inout GraphicsContext,
+        size: CGSize,
+        start: CalendarDay,
+        totalDays: Int,
+        dayWidth: CGFloat,
+        timeScale: GanttTimeScale,
+        workingCalendar: WorkingCalendar
+    ) {
+        let cal = Calendar.gregorianUTC
+        let today = CalendarDay.today
+
+        for offset in 0..<totalDays {
+            let day = start.addingCalendarDays(offset)
+            let x = CGFloat(offset) * dayWidth
+            let date = day.toDate(calendar: cal)
+            let weekday = day.weekday
+
+            if !workingCalendar.isWorkingDay(day) {
+                context.fill(
+                    Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
+                    with: .color(Color.secondary.opacity(0.06))
+                )
+            }
+
+            if day == today {
+                context.fill(
+                    Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
+                    with: .color(Color.red.opacity(0.12))
+                )
+            }
+
+            let showLabel: Bool
+            let labelText: String
+            switch timeScale {
+            case .days:
+                showLabel = true
+                labelText = day.day == 1 ? Self.weekMonthDayFormatter.string(from: date) : "\(day.day)"
+            case .weeks:
+                showLabel = (weekday == 2)
+                labelText = Self.weekMonthDayFormatter.string(from: date)
+            case .months:
+                showLabel = (day.day == 1)
+                labelText = Self.monthYearFormatter.string(from: date)
+            case .quarters:
+                showLabel = (day.day == 1 && (day.month == 1 || day.month == 4 || day.month == 7 || day.month == 10))
+                let q = ((day.month - 1) / 3) + 1
+                labelText = "Q\(q) \(day.year)"
+            }
+
+            if showLabel {
+                var tick = Path()
+                tick.move(to: CGPoint(x: x, y: 0))
+                tick.addLine(to: CGPoint(x: x, y: size.height))
+                context.stroke(tick, with: .color(Color.secondary.opacity(0.22)), lineWidth: 0.5)
+
+                let text = Text(labelText)
+                    .font(.system(size: 10, weight: .medium, design: .default))
+                    .foregroundStyle(day == today ? .red : .secondary)
+                context.draw(text, at: CGPoint(x: x + 4, y: size.height / 2), anchor: .leading)
+            }
+        }
     }
 
     // MARK: - Gantt Canvas (Grid, Today, Connectors, Bars)
@@ -219,164 +237,206 @@ struct GanttChartView: View {
         height: CGFloat
     ) -> some View {
         Canvas { context, size in
-            let cal = viewModel.document.workingCalendar
-            let today = CalendarDay.today
+            Self.drawGanttBody(
+                context: &context,
+                size: size,
+                rows: rows,
+                start: start,
+                totalDays: totalDays,
+                dayWidth: dayWidth,
+                rowHeight: rowHeight,
+                timeScale: viewModel.timeScale,
+                workingCalendar: viewModel.document.workingCalendar,
+                selectedTaskID: viewModel.selectedTaskID,
+                showCriticalPath: viewModel.showCriticalPath,
+                dragState: dragState
+            )
+        }
+    }
 
-            // 1. Vertical grid lines & weekend shading
-            for offset in 0..<totalDays {
-                let day = start.addingCalendarDays(offset)
-                let x = CGFloat(offset) * dayWidth
-                if !cal.isWorkingDay(day) {
-                    context.fill(
-                        Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
-                        with: .color(Color.secondary.opacity(0.045))
-                    )
-                }
-                if viewModel.timeScale == .days || day.weekday == 2 || day.day == 1 {
-                    var gridLine = Path()
-                    gridLine.move(to: CGPoint(x: x, y: 0))
-                    gridLine.addLine(to: CGPoint(x: x, y: size.height))
-                    context.stroke(gridLine, with: .color(Color.secondary.opacity(0.10)), lineWidth: 0.5)
-                }
+    static func drawGanttBody(
+        context: inout GraphicsContext,
+        size: CGSize,
+        rows: [VisibleTaskRow],
+        start: CalendarDay,
+        totalDays: Int,
+        dayWidth: CGFloat,
+        rowHeight: CGFloat,
+        timeScale: GanttTimeScale,
+        workingCalendar: WorkingCalendar,
+        selectedTaskID: UUID?,
+        showCriticalPath: Bool,
+        dragState: BarDragState? = nil
+    ) {
+        let today = CalendarDay.today
+
+        for offset in 0..<totalDays {
+            let day = start.addingCalendarDays(offset)
+            let x = CGFloat(offset) * dayWidth
+            if !workingCalendar.isWorkingDay(day) {
+                context.fill(
+                    Path(CGRect(x: x, y: 0, width: dayWidth, height: size.height)),
+                    with: .color(Color.secondary.opacity(0.045))
+                )
             }
+            if timeScale == .days || day.weekday == 2 || day.day == 1 {
+                var gridLine = Path()
+                gridLine.move(to: CGPoint(x: x, y: 0))
+                gridLine.addLine(to: CGPoint(x: x, y: size.height))
+                context.stroke(gridLine, with: .color(Color.secondary.opacity(0.10)), lineWidth: 0.5)
+            }
+        }
 
-            // 2. Horizontal row dividers & selection highlight
-            var rowIndexByID: [UUID: Int] = [:]
-            for (idx, row) in rows.enumerated() {
-                rowIndexByID[row.id] = idx
-                let y = CGFloat(idx) * rowHeight
-                if viewModel.selectedTaskID == row.id {
-                    context.fill(
-                        Path(CGRect(x: 0, y: y, width: size.width, height: rowHeight)),
-                        with: .color(ScheduleTheme.accent.opacity(0.09))
-                    )
-                } else if row.isGroup {
-                    context.fill(
-                        Path(CGRect(x: 0, y: y, width: size.width, height: rowHeight)),
-                        with: .color(Color.secondary.opacity(0.035))
-                    )
+        var rowIndexByID: [UUID: Int] = [:]
+        for (idx, row) in rows.enumerated() {
+            rowIndexByID[row.id] = idx
+            let y = CGFloat(idx) * rowHeight
+            if selectedTaskID == row.id {
+                context.fill(
+                    Path(CGRect(x: 0, y: y, width: size.width, height: rowHeight)),
+                    with: .color(ScheduleTheme.accent.opacity(0.09))
+                )
+            } else if row.isGroup {
+                context.fill(
+                    Path(CGRect(x: 0, y: y, width: size.width, height: rowHeight)),
+                    with: .color(Color.secondary.opacity(0.035))
+                )
+            }
+            var hLine = Path()
+            hLine.move(to: CGPoint(x: 0, y: y + rowHeight))
+            hLine.addLine(to: CGPoint(x: size.width, y: y + rowHeight))
+            context.stroke(hLine, with: .color(Color.secondary.opacity(0.12)), lineWidth: 0.5)
+        }
+
+        let todayOffset = start.calendarDays(until: today)
+        if todayOffset >= 0 && todayOffset < totalDays {
+            let todayX = (CGFloat(todayOffset) + 0.5) * dayWidth
+            var todayLine = Path()
+            todayLine.move(to: CGPoint(x: todayX, y: 0))
+            todayLine.addLine(to: CGPoint(x: todayX, y: size.height))
+            context.stroke(todayLine, with: .color(Color.red.opacity(0.7)), lineWidth: 1.2)
+        }
+
+        for (succIdx, row) in rows.enumerated() {
+            let succ = row.task
+            for dep in succ.dependencies {
+                guard let predIdx = rowIndexByID[dep.predecessorID] else { continue }
+                let pred = rows[predIdx].task
+
+                let predRect = barRect(for: pred, rowIndex: predIdx, timelineStart: start, dayWidth: dayWidth, rowHeight: rowHeight, workingCalendar: workingCalendar, dragState: dragState)
+                let succRect = barRect(for: succ, rowIndex: succIdx, timelineStart: start, dayWidth: dayWidth, rowHeight: rowHeight, workingCalendar: workingCalendar, dragState: dragState)
+
+                let startPt: CGPoint
+                switch dep.type {
+                case .finishToStart, .finishToFinish:
+                    startPt = CGPoint(x: predRect.maxX, y: predRect.midY)
+                case .startToStart, .startToFinish:
+                    startPt = CGPoint(x: predRect.minX, y: predRect.midY)
                 }
-                var hLine = Path()
-                hLine.move(to: CGPoint(x: 0, y: y + rowHeight))
-                hLine.addLine(to: CGPoint(x: size.width, y: y + rowHeight))
-                context.stroke(hLine, with: .color(Color.secondary.opacity(0.12)), lineWidth: 0.5)
+
+                let endPt: CGPoint
+                switch dep.type {
+                case .finishToStart, .startToStart:
+                    endPt = CGPoint(x: succRect.minX, y: succRect.midY)
+                case .finishToFinish, .startToFinish:
+                    endPt = CGPoint(x: succRect.maxX, y: succRect.midY)
+                }
+
+                drawConnector(context: &context, from: startPt, to: endPt)
             }
+        }
 
-            // 3. Today vertical hairline
-            let todayOffset = start.calendarDays(until: today)
-            if todayOffset >= 0 && todayOffset < totalDays {
-                let todayX = (CGFloat(todayOffset) + 0.5) * dayWidth
-                var todayLine = Path()
-                todayLine.move(to: CGPoint(x: todayX, y: 0))
-                todayLine.addLine(to: CGPoint(x: todayX, y: size.height))
-                context.stroke(todayLine, with: .color(Color.red.opacity(0.7)), lineWidth: 1.2)
-            }
+        for (idx, row) in rows.enumerated() {
+            let task = row.task
+            let rect = barRect(for: task, rowIndex: idx, timelineStart: start, dayWidth: dayWidth, rowHeight: rowHeight, workingCalendar: workingCalendar, dragState: dragState)
+            let isCritical = showCriticalPath && task.isCritical
+            let isSelected = selectedTaskID == task.id
 
-            // 4. Dependency connectors
-            for (succIdx, row) in rows.enumerated() {
-                let succ = row.task
-                for dep in succ.dependencies {
-                    guard let predIdx = rowIndexByID[dep.predecessorID] else { continue }
-                    let pred = rows[predIdx].task
+            if task.isMilestone {
+                let center = CGPoint(x: rect.midX, y: rect.midY)
+                var gateLine = Path()
+                gateLine.move(to: CGPoint(x: center.x, y: CGFloat(idx) * rowHeight))
+                gateLine.addLine(to: CGPoint(x: center.x, y: CGFloat(idx + 1) * rowHeight))
+                context.stroke(
+                    gateLine,
+                    with: .color((isCritical ? Color.red : ScheduleTheme.accent).opacity(0.35)),
+                    style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                )
 
-                    let predRect = barRect(for: pred, rowIndex: predIdx, timelineStart: start)
-                    let succRect = barRect(for: succ, rowIndex: succIdx, timelineStart: start)
+                let r: CGFloat = 8.5
+                var diamond = Path()
+                diamond.move(to: CGPoint(x: center.x, y: center.y - r))
+                diamond.addLine(to: CGPoint(x: center.x + r, y: center.y))
+                diamond.addLine(to: CGPoint(x: center.x, y: center.y + r))
+                diamond.addLine(to: CGPoint(x: center.x - r, y: center.y))
+                diamond.closeSubpath()
 
-                    let startPt: CGPoint
-                    switch dep.type {
-                    case .finishToStart, .finishToFinish:
-                        startPt = CGPoint(x: predRect.maxX, y: predRect.midY)
-                    case .startToStart, .startToFinish:
-                        startPt = CGPoint(x: predRect.minX, y: predRect.midY)
+                let fill: Color = isCritical ? .red : ScheduleTheme.accent
+                context.fill(diamond, with: .color(fill))
+                context.stroke(diamond, with: .color(isSelected ? Color.primary : Color.white.opacity(0.8)), lineWidth: isSelected ? 2.0 : 1.0)
+
+                let label = Text(task.title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(isCritical ? .red : ScheduleTheme.accent)
+                context.draw(label, at: CGPoint(x: center.x + r + 8, y: center.y), anchor: .leading)
+            } else if row.isGroup {
+                let barRect = CGRect(x: rect.minX, y: rect.minY + 4, width: rect.width, height: 6)
+                let path = Path(roundedRect: barRect, cornerRadius: 3)
+                context.fill(path, with: .color(Color.primary.opacity(0.65)))
+
+                let label = Text("\(task.identifier)  \(task.title)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.primary.opacity(0.85))
+                context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
+            } else {
+                let barShape = Path(roundedRect: rect, cornerRadius: 5)
+                let baseColor: Color = isCritical ? Color.red.opacity(0.85) : ScheduleTheme.accent.opacity(0.85)
+                context.fill(barShape, with: .color(baseColor.opacity(0.28)))
+
+                if task.percentComplete > 0 {
+                    let fillWidth = rect.width * CGFloat(min(100, max(0, task.percentComplete)) / 100.0)
+                    let progressRect = CGRect(x: rect.minX, y: rect.minY, width: fillWidth, height: rect.height)
+                    context.drawLayer { layer in
+                        layer.clip(to: barShape)
+                        layer.fill(Path(progressRect), with: .color(baseColor))
                     }
-
-                    let endPt: CGPoint
-                    switch dep.type {
-                    case .finishToStart, .startToStart:
-                        endPt = CGPoint(x: succRect.minX, y: succRect.midY)
-                    case .finishToFinish, .startToFinish:
-                        endPt = CGPoint(x: succRect.maxX, y: succRect.midY)
-                    }
-
-                    drawConnector(context: &context, from: startPt, to: endPt)
                 }
-            }
 
-            // 5. Task bars & milestones
-            for (idx, row) in rows.enumerated() {
-                let task = row.task
-                let rect = barRect(for: task, rowIndex: idx, timelineStart: start)
-                let isCritical = viewModel.showCriticalPath && task.isCritical
-                let isSelected = viewModel.selectedTaskID == task.id
+                context.stroke(
+                    barShape,
+                    with: .color(isSelected ? Color.primary : baseColor),
+                    lineWidth: isSelected ? 1.5 : 0.75
+                )
 
-                if task.isMilestone {
-                    let center = CGPoint(x: rect.midX, y: rect.midY)
-                    // Subtle dashed gate line across the milestone row
-                    var gateLine = Path()
-                    gateLine.move(to: CGPoint(x: center.x, y: CGFloat(idx) * rowHeight))
-                    gateLine.addLine(to: CGPoint(x: center.x, y: CGFloat(idx + 1) * rowHeight))
-                    context.stroke(
-                        gateLine,
-                        with: .color((isCritical ? Color.red : ScheduleTheme.accent).opacity(0.35)),
-                        style: StrokeStyle(lineWidth: 1, dash: [3, 3])
-                    )
-
-                    let r: CGFloat = 8.5
-                    var diamond = Path()
-                    diamond.move(to: CGPoint(x: center.x, y: center.y - r))
-                    diamond.addLine(to: CGPoint(x: center.x + r, y: center.y))
-                    diamond.addLine(to: CGPoint(x: center.x, y: center.y + r))
-                    diamond.addLine(to: CGPoint(x: center.x - r, y: center.y))
-                    diamond.closeSubpath()
-
-                    let fill: Color = isCritical ? .red : ScheduleTheme.accent
-                    context.fill(diamond, with: .color(fill))
-                    context.stroke(diamond, with: .color(isSelected ? Color.primary : Color.white.opacity(0.8)), lineWidth: isSelected ? 2.0 : 1.0)
-
-                    let label = Text(task.title)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isCritical ? .red : ScheduleTheme.accent)
-                    context.draw(label, at: CGPoint(x: center.x + r + 8, y: center.y), anchor: .leading)
-                } else if row.isGroup {
-                    // Summary group bracket bar
-                    let barRect = CGRect(x: rect.minX, y: rect.minY + 4, width: rect.width, height: 6)
-                    let path = Path(roundedRect: barRect, cornerRadius: 3)
-                    context.fill(path, with: .color(Color.primary.opacity(0.65)))
-
-                    let label = Text("\(task.identifier)  \(task.title)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Color.primary.opacity(0.85))
-                    context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
-                } else {
-                    let barShape = Path(roundedRect: rect, cornerRadius: 5)
-                    let baseColor: Color = isCritical ? Color.red.opacity(0.85) : ScheduleTheme.accent.opacity(0.85)
-                    context.fill(barShape, with: .color(baseColor.opacity(0.28)))
-
-                    if task.percentComplete > 0 {
-                        let fillWidth = rect.width * CGFloat(min(100, max(0, task.percentComplete)) / 100.0)
-                        let progressRect = CGRect(x: rect.minX, y: rect.minY, width: fillWidth, height: rect.height)
-                        context.drawLayer { layer in
-                            layer.clip(to: barShape)
-                            layer.fill(Path(progressRect), with: .color(baseColor))
-                        }
-                    }
-
-                    context.stroke(
-                        barShape,
-                        with: .color(isSelected ? Color.primary : baseColor),
-                        lineWidth: isSelected ? 1.5 : 0.75
-                    )
-
-                    let label = Text("\(task.identifier)  \(task.title)")
-                        .font(.caption2)
-                        .foregroundStyle(Color.secondary)
-                    context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
-                }
+                let label = Text("\(task.identifier)  \(task.title)")
+                    .font(.caption2)
+                    .foregroundStyle(Color.secondary)
+                context.draw(label, at: CGPoint(x: rect.maxX + 8, y: rect.midY), anchor: .leading)
             }
         }
     }
 
     private func barRect(for task: ScheduleTask, rowIndex: Int, timelineStart: CalendarDay) -> CGRect {
+        Self.barRect(
+            for: task,
+            rowIndex: rowIndex,
+            timelineStart: timelineStart,
+            dayWidth: dayWidth,
+            rowHeight: rowHeight,
+            workingCalendar: viewModel.document.workingCalendar,
+            dragState: dragState
+        )
+    }
+
+    static func barRect(
+        for task: ScheduleTask,
+        rowIndex: Int,
+        timelineStart: CalendarDay,
+        dayWidth: CGFloat,
+        rowHeight: CGFloat,
+        workingCalendar: WorkingCalendar,
+        dragState: BarDragState? = nil
+    ) -> CGRect {
         var effectiveStart = task.startDate
         var effectiveDuration = task.durationDays
         if let drag = dragState, drag.taskID == task.id {
@@ -393,7 +453,7 @@ struct GanttChartView: View {
         if task.isMilestone {
             spanDays = 1
         } else if let drag = dragState, drag.taskID == task.id, drag.mode == .resizeDuration {
-            let end = viewModel.document.workingCalendar.endDate(startingOn: effectiveStart, durationDays: effectiveDuration)
+            let end = workingCalendar.endDate(startingOn: effectiveStart, durationDays: effectiveDuration)
             spanDays = max(1, effectiveStart.calendarDays(until: end) + 1)
         } else {
             let end = dragState?.taskID == task.id
@@ -408,7 +468,7 @@ struct GanttChartView: View {
         return CGRect(x: x, y: y, width: width, height: rowHeight - 16)
     }
 
-    private func drawConnector(context: inout GraphicsContext, from start: CGPoint, to end: CGPoint) {
+    static func drawConnector(context: inout GraphicsContext, from start: CGPoint, to end: CGPoint) {
         let elbowX = start.x + 8
         var path = Path()
         path.move(to: start)

@@ -4,6 +4,8 @@ import UniformTypeIdentifiers
 import ScheduleCore
 
 enum ExportFormat: String, CaseIterable, Identifiable {
+    case ganttPDF = "Gantt Chart PDF (.pdf)"
+    case ganttPNG = "Gantt Chart Image (.png)"
     case excel = "Microsoft Excel (.xlsx)"
     case numbers = "Apple Numbers (.numbers)"
     case mspXML = "Microsoft Project XML (.xml)"
@@ -12,6 +14,8 @@ enum ExportFormat: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
+        case .ganttPDF: return "Lossless vector graphic for Keynote & print"
+        case .ganttPNG: return "High-DPI image for PowerPoint, Google Slides & web"
         case .excel: return "Formula-driven workbook (also opens in Numbers)"
         case .numbers: return "Native Apple Numbers document"
         case .mspXML: return "Compatible with Microsoft Project"
@@ -20,6 +24,8 @@ enum ExportFormat: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .ganttPDF: return "doc.richtext"
+        case .ganttPNG: return "photo"
         case .excel: return "tablecells"
         case .numbers: return "chart.bar.doc.horizontal"
         case .mspXML: return "doc.text"
@@ -57,11 +63,16 @@ enum FileDialogs {
         saveScheduleDocument(document, existingURL: nil)
     }
 
-    static func exportProject(_ document: ProjectDocument, format: ExportFormat) -> (success: Bool, message: String?) {
+    static func exportProject(_ viewModel: ProjectViewModel, format: ExportFormat) -> (success: Bool, message: String?) {
+        let document = viewModel.document
         let panel = NSSavePanel()
         panel.nameFieldStringValue = document.name
 
         switch format {
+        case .ganttPDF:
+            panel.allowedContentTypes = [.pdf]
+        case .ganttPNG:
+            panel.allowedContentTypes = [.png]
         case .excel:
             panel.allowedContentTypes = [UTType(filenameExtension: "xlsx") ?? .spreadsheet]
         case .numbers:
@@ -79,6 +90,10 @@ enum FileDialogs {
 
         do {
             switch format {
+            case .ganttPDF:
+                try GanttExporter.exportPDF(viewModel: viewModel, to: url)
+            case .ganttPNG:
+                try GanttExporter.exportPNG(viewModel: viewModel, to: url)
             case .excel:
                 try XLSXExporter.export(document: document, to: url)
             case .numbers:
