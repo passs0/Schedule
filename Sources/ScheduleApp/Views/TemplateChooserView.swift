@@ -86,8 +86,6 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 20)
-
             VStack(spacing: 18) {
                 VStack(spacing: 8) {
                     Image(nsImage: NSApp.applicationIconImage)
@@ -151,6 +149,7 @@ struct WelcomeView: View {
                     .frame(maxWidth: 460)
                 }
             }
+            .padding(.top, 20)
             .padding(.horizontal, 32)
 
             Spacer(minLength: 20)
@@ -179,7 +178,6 @@ struct WelcomeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
-        .ignoresSafeArea(.container, edges: .top)
     }
 }
 
