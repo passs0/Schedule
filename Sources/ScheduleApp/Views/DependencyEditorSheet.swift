@@ -130,6 +130,7 @@ struct DependencyEditorSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
                 .disabled(selectedPredecessorID == nil)
             }
             .padding()

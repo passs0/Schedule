@@ -139,38 +139,20 @@ struct GanttChartView: View {
             if !viewModel.document.versions.isEmpty {
                 Divider().frame(height: 14)
                 Menu {
-                    Button {
-                        viewModel.baselineVersionID = nil
-                    } label: {
-                        HStack {
-                            Text("None")
-                            if viewModel.baselineVersionID == nil {
-                                Image(systemName: "checkmark")
-                            }
+                    Picker("Baseline", selection: $viewModel.baselineVersionID) {
+                        Text("None").tag(Optional<UUID>.none)
+                        Divider()
+                        ForEach(viewModel.document.versions) { version in
+                            Text(version.name).tag(Optional(version.id))
                         }
                     }
-                    Divider()
-                    ForEach(viewModel.document.versions) { version in
-                        Button {
-                            viewModel.baselineVersionID = version.id
-                        } label: {
-                            HStack {
-                                Text(version.name)
-                                if viewModel.baselineVersionID == version.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
                 } label: {
                     let activeName = viewModel.document.versions.first(where: { $0.id == viewModel.baselineVersionID })?.name
-                    HStack(spacing: 4) {
-                        Image(systemName: "rectangle.stack")
-                            .font(.caption2)
-                        Text(activeName.map { "Baseline: \($0)" } ?? "Baseline")
-                            .font(.callout)
-                    }
-                    .foregroundStyle(activeName != nil ? ScheduleTheme.accent : .secondary)
+                    Label(activeName.map { "Baseline: \($0)" } ?? "Baseline", systemImage: "rectangle.stack")
+                        .font(.callout)
+                        .foregroundStyle(activeName != nil ? ScheduleTheme.accent : .secondary)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()

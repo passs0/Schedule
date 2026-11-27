@@ -9,11 +9,9 @@ struct MainWindowView: View {
     @State private var dependencyTargetID: UUID?
     @State private var showingSnapshotSheet = false
     @State private var showingCalendarManager = false
-    @State private var showingExportPopover = false
     @State private var showingTemplateChooser = false
+    @State private var pendingTemplate: ProjectTemplate?
     @State private var alertInfo: AlertInfo?
-    @State private var splitRatio: CGFloat = 0.50
-    @State private var dragStartRatio: CGFloat?
 
     @Environment(\.undoManager) private var undoManager
 
@@ -45,10 +43,9 @@ struct MainWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(WindowSizeController(isWorkspaceOpen: viewModel != nil))
         .onAppear {
-                syncViewModel()
-            }
+            syncViewModel()
+        }
             .onChange(of: store.selectedProjectID) { _, _ in
                 syncViewModel()
             }
@@ -92,28 +89,38 @@ struct MainWindowView: View {
                     CalendarManagerSheet(viewModel: vm)
                 }
             }
-            .sheet(isPresented: $showingTemplateChooser) {
+            .sheet(isPresented: $showingTemplateChooser, onDismiss: {
+                if let template = pendingTemplate {
+                    pendingTemplate = nil
+                    _ = store.createNewProject(template: template)
+                    syncViewModel()
+                }
+            }) {
                 TemplateChooserView(
                     onSelectTemplate: { template in
+                        pendingTemplate = template
                         showingTemplateChooser = false
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(220))
-                            _ = store.createNewProject(template: template)
-                            syncViewModel()
-                        }
                     },
                     onCancel: {
+                        pendingTemplate = nil
                         showingTemplateChooser = false
                     }
                 )
                 .frame(width: 720, height: 460)
             }
-            .alert(item: $alertInfo) { info in
-                Alert(
-                    title: Text(info.title),
-                    message: Text(info.message),
-                    dismissButton: .default(Text("OK"))
-                )
+            .alert(
+                alertInfo?.title ?? "",
+                isPresented: Binding(
+                    get: { alertInfo != nil },
+                    set: { if !$0 { alertInfo = nil } }
+                ),
+                presenting: alertInfo
+            ) { _ in
+                Button("OK", role: .cancel) {
+                    alertInfo = nil
+                }
+            } message: { info in
+                Text(info.message)
             }
     }
 
@@ -150,6 +157,14 @@ struct MainWindowView: View {
         }
         .navigationTitle(vm.document.name)
         .navigationSubtitle("\(vm.document.tasks.count) items")
+        .searchable(
+            text: Binding(
+                get: { vm.searchText },
+                set: { vm.searchText = $0 }
+            ),
+            placement: .toolbar,
+            prompt: "Filter tasks"
+        )
         .inspector(isPresented: Binding(
             get: { vm.isInspectorPresented && !vm.isComparingVersions },
             set: { vm.isInspectorPresented = $0 }
@@ -164,16 +179,14 @@ struct MainWindowView: View {
                 Button {
                     vm.addTask(after: vm.selectedTaskID, isMilestone: false)
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13.5, weight: .medium))
+                    Label("New Task", systemImage: "plus")
                 }
                 .help("New Task")
 
                 Button {
                     vm.addTask(after: vm.selectedTaskID, isMilestone: true)
                 } label: {
-                    Image(systemName: "diamond")
-                        .font(.system(size: 12.5, weight: .medium))
+                    Label("New Milestone", systemImage: "diamond")
                 }
                 .help("New Milestone (⇧⌘M)")
 
@@ -182,8 +195,7 @@ struct MainWindowView: View {
                         dependencyTargetID = id
                     }
                 } label: {
-                    Image(systemName: "link.badge.plus")
-                        .font(.system(size: 13, weight: .medium))
+                    Label("Add Relationship", systemImage: "link.badge.plus")
                 }
                 .disabled(vm.selectedTaskID == nil)
                 .help("Add Relationship (⌘D)")
@@ -192,11 +204,7 @@ struct MainWindowView: View {
             ToolbarItem(placement: .principal) {
                 Picker("View Mode", selection: Binding(
                     get: { vm.viewMode },
-                    set: { newMode in
-                        withAnimation(.snappy(duration: 0.24, extraBounce: 0)) {
-                            vm.viewMode = newMode
-                        }
-                    }
+                    set: { vm.viewMode = $0 }
                 )) {
                     ForEach(WorkspaceViewMode.allCases) { mode in
                         Text(LocalizedStringKey(mode.rawValue)).tag(mode)
@@ -211,69 +219,36 @@ struct MainWindowView: View {
                 Button {
                     showingCalendarManager = true
                 } label: {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 13, weight: .medium))
+                    Label("Calendars", systemImage: "calendar")
                 }
                 .help("Owner Calendars & Holidays")
 
                 Button {
-                    withAnimation(.snappy(duration: 0.24, extraBounce: 0)) {
-                        vm.isComparingVersions.toggle()
-                    }
+                    vm.isComparingVersions.toggle()
                 } label: {
-                    Image(systemName: "uiwindow.split.2x1")
-                        .font(.system(size: 13, weight: .medium))
+                    Label("Compare Versions", systemImage: "uiwindow.split.2x1")
                 }
                 .help("Compare Project Versions in Split View")
 
                 Button {
                     handleImport()
                 } label: {
-                    Image(systemName: "square.and.arrow.down")
-                        .font(.system(size: 13, weight: .medium))
+                    Label("Import", systemImage: "square.and.arrow.down")
                 }
                 .help("Import Microsoft Project XML or Schedule File")
 
-                Button {
-                    showingExportPopover.toggle()
-                } label: {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 13, weight: .medium))
-                }
-                .help("Export Schedule (Excel, Numbers, Microsoft Project XML)")
-                .popover(isPresented: $showingExportPopover, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Export Schedule")
-                            .font(.headline)
-                            .padding(.bottom, 2)
-                        ForEach(ExportFormat.allCases) { format in
-                            Button {
-                                showingExportPopover = false
-                                handleExport(format: format, viewModel: vm)
-                            } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: format.systemImage)
-                                        .frame(width: 20)
-                                        .foregroundStyle(ScheduleTheme.accent)
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(LocalizedStringKey(format.rawValue))
-                                            .font(.callout.weight(.medium))
-                                        Text(LocalizedStringKey(format.subtitle))
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(.vertical, 5)
-                                .padding(.horizontal, 8)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                Menu {
+                    ForEach(ExportFormat.allCases) { format in
+                        Button {
+                            handleExport(format: format, viewModel: vm)
+                        } label: {
+                            Label(LocalizedStringKey(format.rawValue), systemImage: format.systemImage)
                         }
                     }
-                    .padding(12)
-                    .frame(width: 310)
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
                 }
+                .help("Export Schedule (Excel, Numbers, Microsoft Project XML)")
             }
 
             if #available(macOS 26.0, *) {
@@ -284,8 +259,7 @@ struct MainWindowView: View {
                 Button {
                     vm.isInspectorPresented.toggle()
                 } label: {
-                    Image(systemName: "sidebar.right")
-                        .font(.system(size: 13.5, weight: .medium))
+                    Label("Inspector", systemImage: "sidebar.right")
                 }
                 .help("Toggle Inspector (⌘I)")
             }
@@ -294,78 +268,33 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private func mainWorkspace(vm: ProjectViewModel) -> some View {
-        GeometryReader { geo in
-            let totalWidth = max(1, geo.size.width)
-            let clampedListWidth = min(max(340, totalWidth * splitRatio), max(340, totalWidth - 380))
-            let dividerWidth: CGFloat = vm.viewMode == .split ? 1 : 0
-            let listWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return totalWidth
-                case .split: return clampedListWidth
-                case .ganttOnly: return 0
-                }
-            }()
-            let ganttWidth: CGFloat = {
-                switch vm.viewMode {
-                case .listOnly: return 0
-                case .split: return max(380, totalWidth - clampedListWidth - dividerWidth)
-                case .ganttOnly: return totalWidth
-                }
-            }()
-
-            HStack(spacing: 0) {
+        switch vm.viewMode {
+        case .listOnly:
+            TaskListView(
+                viewModel: vm,
+                scrollSync: scrollSync,
+                onAddDependency: { dependencyTargetID = $0 }
+            )
+        case .ganttOnly:
+            GanttChartView(
+                viewModel: vm,
+                scrollSync: scrollSync
+            )
+        case .split:
+            HSplitView {
                 TaskListView(
                     viewModel: vm,
                     scrollSync: scrollSync,
                     onAddDependency: { dependencyTargetID = $0 }
                 )
-                .frame(width: listWidth)
-                .clipped()
-                .opacity(vm.viewMode == .ganttOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .ganttOnly)
-
-                if vm.viewMode == .split {
-                    Rectangle()
-                        .fill(Color(nsColor: .separatorColor))
-                        .frame(width: 1)
-                        .overlay {
-                            Color.clear
-                                .frame(width: 8)
-                                .contentShape(Rectangle())
-                                .onHover { hovering in
-                                    if hovering {
-                                        NSCursor.resizeLeftRight.push()
-                                    } else {
-                                        NSCursor.pop()
-                                    }
-                                }
-                                .gesture(
-                                    DragGesture(minimumDistance: 1)
-                                        .onChanged { value in
-                                            let base = dragStartRatio ?? splitRatio
-                                            if dragStartRatio == nil { dragStartRatio = base }
-                                            let nextRatio = base + (value.translation.width / totalWidth)
-                                            let minRatio = 340 / totalWidth
-                                            let maxRatio = max(minRatio, (totalWidth - 380) / totalWidth)
-                                            splitRatio = min(max(nextRatio, minRatio), maxRatio)
-                                        }
-                                        .onEnded { _ in
-                                            dragStartRatio = nil
-                                        }
-                                )
-                        }
-                }
+                .frame(minWidth: 340, maxWidth: .infinity)
 
                 GanttChartView(
                     viewModel: vm,
                     scrollSync: scrollSync
                 )
-                .frame(width: ganttWidth)
-                .clipped()
-                .opacity(vm.viewMode == .listOnly ? 0 : 1)
-                .allowsHitTesting(vm.viewMode != .listOnly)
+                .frame(minWidth: 380, maxWidth: .infinity)
             }
-            .animation(.snappy(duration: 0.24, extraBounce: 0), value: vm.viewMode)
         }
     }
 
@@ -440,54 +369,6 @@ extension Notification.Name {
 
 private struct IdentifiableUUID: Identifiable {
     let id: UUID
-}
-
-private struct WindowSizeController: NSViewRepresentable {
-    let isWorkspaceOpen: Bool
-
-    final class Coordinator {
-        var lastState: Bool?
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> NSView {
-        NSView(frame: .zero)
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        guard context.coordinator.lastState != isWorkspaceOpen else { return }
-        context.coordinator.lastState = isWorkspaceOpen
-        let open = isWorkspaceOpen
-
-        DispatchQueue.main.async {
-            guard let window = nsView.window else { return }
-            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            if open {
-                window.styleMask.insert(.resizable)
-                window.standardWindowButton(.zoomButton)?.isEnabled = true
-                window.minSize = NSSize(width: 960, height: 600)
-                window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-                window.setFrame(visible, display: true, animate: false)
-                window.alphaValue = 0.88
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.16
-                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                    window.animator().alphaValue = 1.0
-                }
-            } else {
-                window.styleMask.remove(.resizable)
-                window.standardWindowButton(.zoomButton)?.isEnabled = false
-                let targetW: CGFloat = 560
-                let targetH: CGFloat = 480
-                window.minSize = NSSize(width: targetW, height: targetH)
-                window.maxSize = NSSize(width: targetW, height: targetH)
-                let x = visible.midX - targetW / 2
-                let y = visible.midY - targetH / 2
-                window.setFrame(NSRect(x: x, y: y, width: targetW, height: targetH), display: true, animate: false)
-            }
-        }
-    }
 }
 
 private struct MenuNotificationModifier: ViewModifier {

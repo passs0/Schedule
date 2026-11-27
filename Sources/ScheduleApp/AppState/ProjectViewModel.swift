@@ -164,6 +164,7 @@ public final class ProjectViewModel {
     public var cycleWarningMessage: String?
     public var recentlyRescheduledIDs: Set<UUID> = []
     public var lastScheduleSummary: String?
+    public var searchText: String = ""
 
     public weak var undoManager: UndoManager?
     private let onPersist: (ProjectDocument) -> Void
@@ -298,7 +299,7 @@ public final class ProjectViewModel {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(2.2))
                 guard let self else { return }
-                withAnimation(.easeOut(duration: 0.35)) {
+                withAnimation {
                     self.recentlyRescheduledIDs = []
                     self.lastScheduleSummary = nil
                 }

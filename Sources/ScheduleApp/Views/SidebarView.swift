@@ -117,31 +117,17 @@ struct SidebarView: View {
 
     @ViewBuilder
     private func projectRow(_ project: ProjectDocument, tag: SidebarRowTag) -> some View {
-        let isSelected = selectedTag == tag
-
-        HStack(spacing: 6) {
-            Label {
-                Text(project.name)
-                    .lineLimit(1)
-            } icon: {
-                Image(systemName: "calendar.day.timeline.leading")
-                    .foregroundStyle(isSelected ? .white : .secondary)
+        Label(project.name, systemImage: "calendar.day.timeline.leading")
+            .lineLimit(1)
+            .badge(project.tasks.count)
+            .contextMenu {
+                Button(project.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
+                    store.toggleFavorite(project.id)
+                }
+                Divider()
+                Button("Delete Project", role: .destructive) {
+                    store.deleteProject(project.id)
+                }
             }
-
-            Spacer(minLength: 4)
-
-            Text("\(project.tasks.count)")
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(isSelected ? .white.opacity(0.75) : .secondary.opacity(0.6))
-        }
-        .contextMenu {
-            Button(project.isFavorite ? "Remove from Favorites" : "Add to Favorites") {
-                store.toggleFavorite(project.id)
-            }
-            Divider()
-            Button("Delete Project", role: .destructive) {
-                store.deleteProject(project.id)
-            }
-        }
     }
 }

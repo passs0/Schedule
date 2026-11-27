@@ -7,10 +7,11 @@ struct TaskListView: View {
     let scrollSync: ScrollSyncState
     let onAddDependency: (UUID) -> Void
 
+    @Environment(\.controlActiveState) private var controlActiveState
+
     @State private var editingTaskID: UUID?
     @State private var editingTitle: String = ""
     @State private var draggingTaskID: UUID?
-    @State private var searchText: String = ""
     @State private var activePopover: CellPopover?
     @State private var showingScheduleAnchorPopover = false
 
@@ -19,7 +20,6 @@ struct TaskListView: View {
         case duration(UUID)
         case progress(UUID)
         case relationship(UUID)
-        case calendar(UUID)
         case dri(UUID)
 
         var id: String {
@@ -28,14 +28,13 @@ struct TaskListView: View {
             case .duration(let id): return "dur:\(id)"
             case .progress(let id): return "prog:\(id)"
             case .relationship(let id): return "rel:\(id)"
-            case .calendar(let id): return "cal:\(id)"
             case .dri(let id): return "dri:\(id)"
             }
         }
     }
 
     private var filteredRows: [VisibleTaskRow] {
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return viewModel.visibleRows }
         return viewModel.visibleRows.filter {
             $0.task.title.localizedCaseInsensitiveContains(q) ||
@@ -66,6 +65,7 @@ struct TaskListView: View {
                 EquatableRowsView(
                     rows: rows,
                     selectedTaskID: viewModel.selectedTaskID,
+                    isKeyWindow: controlActiveState == .key,
                     editingTaskID: editingTaskID,
                     editingTitle: editingTitle,
                     showExtendedColumns: showExtendedColumns,
@@ -104,55 +104,26 @@ struct TaskListView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 5) {
-                Image(systemName: "magnifyingglass")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                TextField("Filter tasks…", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                    .frame(width: 150)
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
-
             Spacer()
+
+            let isBackward = viewModel.document.schedulingDirection == .fromTargetFinish
+            let anchorDay = isBackward
+                ? (viewModel.document.targetFinishDate ?? viewModel.document.tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate)
+                : viewModel.document.projectStartDate
 
             Button {
                 showingScheduleAnchorPopover.toggle()
             } label: {
-                let isBackward = viewModel.document.schedulingDirection == .fromTargetFinish
-                let anchorDay = isBackward
-                    ? (viewModel.document.targetFinishDate ?? viewModel.document.tasks.map(\.endDate).max() ?? viewModel.document.projectStartDate)
-                    : viewModel.document.projectStartDate
-                HStack(spacing: 5) {
+                HStack(spacing: 4) {
                     Image(systemName: isBackward ? "arrow.backward.to.line" : "arrow.forward.to.line")
-                        .font(.caption2.weight(.semibold))
                     Text(isBackward ? "Target:" : "Start:")
-                        .font(.caption.weight(.medium))
                     Text(Self.shortDateFormatter.string(from: anchorDay.toDate()))
-                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .monospacedDigit()
                 }
-                .foregroundStyle(isBackward ? ScheduleTheme.accent : .secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    (isBackward ? ScheduleTheme.accent.opacity(0.14) : Color(nsColor: .controlBackgroundColor)),
-                    in: Capsule()
-                )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(isBackward ? ScheduleTheme.accent : nil)
             .help("Schedule from Start Date or work backwards from a Target Finish Date")
             .popover(isPresented: $showingScheduleAnchorPopover, arrowEdge: .bottom) {
                 ScheduleAnchorPopover(viewModel: viewModel)
@@ -162,10 +133,7 @@ struct TaskListView: View {
                 Label(summary, systemImage: "sparkles")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(ScheduleTheme.accent)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(ScheduleTheme.accent.opacity(0.14), in: Capsule())
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    .transition(.opacity)
             }
             Text("\(filteredRows.count) shown")
                 .font(.caption)
@@ -231,7 +199,8 @@ struct TaskListView: View {
     @ViewBuilder
     private func taskRow(_ row: VisibleTaskRow, taskMap: [UUID: ScheduleTask]) -> some View {
         let task = row.task
-        let isSelected = viewModel.selectedTaskID == task.id
+        let isRowSelected = viewModel.selectedTaskID == task.id
+        let isSelected = isRowSelected && controlActiveState == .key
 
         HStack(spacing: 0) {
             Text(task.identifier)
@@ -248,7 +217,7 @@ struct TaskListView: View {
 
                 if row.isGroup {
                     Button {
-                        withAnimation(.snappy(duration: 0.22, extraBounce: 0)) {
+                        withAnimation {
                             viewModel.toggleExpand(task.id)
                         }
                     } label: {
@@ -391,7 +360,7 @@ struct TaskListView: View {
         }
         .frame(height: Self.rowHeight)
         .foregroundStyle(isSelected ? .white : .primary)
-        .background(rowBackground(isSelected: isSelected, isGroup: row.isGroup, isMilestone: task.isMilestone))
+        .background(rowBackground(isSelected: isRowSelected, isKey: controlActiveState == .key, isGroup: row.isGroup, isMilestone: task.isMilestone))
         .overlay(alignment: .bottom) {
             Divider().opacity(0.45)
         }
@@ -441,10 +410,10 @@ struct TaskListView: View {
     }
 
     @ViewBuilder
-    private func rowBackground(isSelected: Bool, isGroup: Bool, isMilestone: Bool) -> some View {
+    private func rowBackground(isSelected: Bool, isKey: Bool, isGroup: Bool, isMilestone: Bool) -> some View {
         if isSelected {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .fill(Color(nsColor: .selectedContentBackgroundColor))
+                .fill(Color(nsColor: isKey ? .selectedContentBackgroundColor : .unemphasizedSelectedContentBackgroundColor))
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
         } else if isGroup {
@@ -683,43 +652,6 @@ struct TaskListView: View {
                 .padding(12)
                 .frame(width: 340)
             }
-        case .calendar(let id):
-            if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Assign Calendar")
-                        .font(.callout.weight(.semibold))
-                        .padding(.bottom, 2)
-                    Button {
-                        viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in t.calendarID = nil }
-                        activePopover = nil
-                    } label: {
-                        HStack {
-                            Text("Default (Mon–Fri)")
-                            Spacer()
-                            if task.calendarID == nil { Image(systemName: "checkmark").foregroundStyle(ScheduleTheme.accent) }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    Divider()
-                    ForEach(viewModel.document.calendars) { cal in
-                        Button {
-                            viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in t.calendarID = cal.id }
-                            activePopover = nil
-                        } label: {
-                            HStack {
-                                Text(cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))")
-                                Spacer()
-                                if task.calendarID == cal.id { Image(systemName: "checkmark").foregroundStyle(ScheduleTheme.accent) }
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(12)
-                .frame(width: 260)
-            }
         case .dri(let id):
             if let task = viewModel.document.tasks.first(where: { $0.id == id }) {
                 DRIPopoverView(
@@ -779,20 +711,34 @@ struct TaskListView: View {
             let calName = viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.owner
                 .nilIfEmpty ?? viewModel.document.calendars.first(where: { $0.id == task.calendarID })?.name
                 ?? "Default"
-            HStack(spacing: 4) {
-                Image(systemName: "calendar")
-                    .font(.caption2)
-                Text(calName)
+            Menu {
+                Picker("Assign Calendar", selection: Binding(
+                    get: { task.calendarID },
+                    set: { newCalID in
+                        viewModel.selectTask(task.id)
+                        viewModel.updateTask(task.id, actionName: "Assign Calendar") { t, _ in
+                            t.calendarID = newCalID
+                        }
+                    }
+                )) {
+                    Text("Default (Mon–Fri)").tag(Optional<UUID>.none)
+                    Divider()
+                    ForEach(viewModel.document.calendars) { cal in
+                        Text(cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))")
+                            .tag(Optional(cal.id))
+                    }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Label(calName, systemImage: "calendar")
                     .font(.caption)
                     .lineLimit(1)
+                    .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
             }
-            .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                viewModel.selectTask(task.id)
-                activePopover = .calendar(task.id)
-            }
         }
     }
 }
@@ -958,6 +904,7 @@ private struct ScheduleAnchorPopover: View {
 private struct EquatableRowsView<Content: View>: View, Equatable {
     let rows: [VisibleTaskRow]
     let selectedTaskID: UUID?
+    let isKeyWindow: Bool
     let editingTaskID: UUID?
     let editingTitle: String
     let showExtendedColumns: Bool
@@ -968,6 +915,7 @@ private struct EquatableRowsView<Content: View>: View, Equatable {
     nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.rows == rhs.rows &&
         lhs.selectedTaskID == rhs.selectedTaskID &&
+        lhs.isKeyWindow == rhs.isKeyWindow &&
         lhs.editingTaskID == rhs.editingTaskID &&
         lhs.editingTitle == rhs.editingTitle &&
         lhs.showExtendedColumns == rhs.showExtendedColumns &&

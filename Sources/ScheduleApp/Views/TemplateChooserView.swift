@@ -9,7 +9,7 @@ struct WelcomeView: View {
     let onOpenFile: () -> Void
     let onNewDocument: () -> Void
 
-    @State private var hoveredProjectID: UUID?
+    @State private var selectedProjectID: UUID?
 
     private static let modifiedFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -41,63 +41,44 @@ struct WelcomeView: View {
                 }
 
                 if !recentProjects.isEmpty {
+                    let visibleRecent = Array(recentProjects.prefix(4))
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Recent Projects")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
 
-                        VStack(spacing: 0) {
-                            let visibleRecent = Array(recentProjects.prefix(4))
-                            ForEach(visibleRecent) { project in
-                                Button {
-                                    onOpenProject(project.id)
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: "calendar.day.timeline.leading")
-                                            .font(.callout)
-                                            .foregroundStyle(ScheduleTheme.accent)
-                                            .frame(width: 22)
+                        List(visibleRecent, selection: $selectedProjectID) { project in
+                            Button {
+                                onOpenProject(project.id)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "calendar.day.timeline.leading")
+                                        .font(.callout)
+                                        .foregroundStyle(ScheduleTheme.accent)
+                                        .frame(width: 22)
 
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(project.name)
-                                                .font(.callout.weight(.medium))
-                                                .foregroundStyle(.primary)
-                                            Text("\(project.tasks.count) items")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-
-                                        Spacer()
-
-                                        Text(Self.modifiedFormatter.string(from: project.modifiedAt))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(project.name)
+                                            .font(.callout.weight(.medium))
+                                        Text("\(project.tasks.count) items")
                                             .font(.caption2)
-                                            .foregroundStyle(.tertiary)
+                                            .foregroundStyle(.secondary)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 9)
-                                    .background(
-                                        hoveredProjectID == project.id
-                                            ? Color.primary.opacity(0.05)
-                                            : Color.clear
-                                    )
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .onHover { hovering in
-                                    hoveredProjectID = hovering ? project.id : (hoveredProjectID == project.id ? nil : hoveredProjectID)
-                                }
 
-                                if project.id != visibleRecent.last?.id {
-                                    Divider().padding(.leading, 44)
+                                    Spacer()
+
+                                    Text(Self.modifiedFormatter.string(from: project.modifiedAt))
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
                                 }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .tag(project.id)
                         }
-                        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
-                        )
+                        .listStyle(.bordered(alternatesRowBackgrounds: false))
+                        .frame(height: CGFloat(visibleRecent.count) * 44 + 8)
                     }
                     .frame(maxWidth: 430)
                 }

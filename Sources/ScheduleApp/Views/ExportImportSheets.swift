@@ -162,6 +162,7 @@ struct SnapshotSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
             }
             .padding()
         }
