@@ -121,7 +121,7 @@ enum FileDialogs {
         ]
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
-        panel.message = "Import Excel (.xlsx), CSV (.csv/.tsv), Microsoft Project XML (.xml), or Schedule (.schedule) files."
+        panel.message = "Import Microsoft Project (.mpp, .xml), Excel (.xlsx), CSV (.csv/.tsv), or Schedule (.schedule) files."
 
         guard panel.runModal() == .OK, let url = panel.url else {
             return nil

@@ -43,11 +43,16 @@ public final class ScrollSyncState {
 
     private weak var listScrollView: NSScrollView?
     private weak var ganttScrollView: NSScrollView?
-    private var listObserver: NSObjectProtocol?
-    private var ganttObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var listObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var ganttObserver: NSObjectProtocol?
     private var isSyncing = false
 
     public init() {}
+
+    deinit {
+        if let obs = listObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = ganttObserver { NotificationCenter.default.removeObserver(obs) }
+    }
 
     public func register(_ scrollView: NSScrollView, for pane: Pane) {
         scrollView.contentView.postsBoundsChangedNotifications = true

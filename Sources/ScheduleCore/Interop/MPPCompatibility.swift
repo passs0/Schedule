@@ -1,17 +1,5 @@
 import Foundation
 
-public enum MPPImportError: LocalizedError, Sendable {
-    case binaryMPPRequiresXMLConversion
-
-    public var errorDescription: String? {
-        "Native binary .mpp files use Microsoft's undocumented OLE2 format, which has no native macOS/Swift SDK."
-    }
-
-    public var recoverySuggestion: String? {
-        "In Microsoft Project, choose File → Save As → XML Format (*.xml), then import the .xml file into Schedule. All tasks, hierarchy, dates, milestones, and dependencies are preserved."
-    }
-}
-
 /// Strategy and diagnostics for Microsoft Project `.mpp` binary interoperability.
 public enum MPPCompatibility {
     /// OLE2 Compound Document magic header (`D0 CF 11 E0 A1 B1 1A E1`).
