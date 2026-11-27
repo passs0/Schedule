@@ -157,7 +157,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("l10n", "Accessibility & Localization", 3, after: ["flows"], owner: "Client UI"),
                         TaskSpec("fe_gate", "Client Feature Complete", 0, milestone: true, after: ["offline", "l10n", "be_gate"], owner: "Client UI")
                     ]),
-                    PhaseSpec("Integration & Performance Hardening", "E2E testing, load benchmarking, profiling, and bug bash.", [
+                    PhaseSpec("Integration & Hardening", "E2E testing, load benchmarking, profiling, and bug bash.", [
                         TaskSpec("e2e", "End-to-End Integration Suite", 5, after: ["fe_gate"], owner: "QA"),
                         TaskSpec("load", "Load & Latency Benchmarking", 3, after: ["be_gate"], owner: "SRE"),
                         TaskSpec("prof", "Memory & Battery Profiling", 3, after: ["fe_gate"], owner: "Client UI"),
@@ -170,11 +170,15 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("docs", "Release Notes & On-Call Runbooks", 2, after: ["freeze"], owner: "SRE"),
                         TaskSpec("rc", "Release Candidate Sign-Off", 0, milestone: true, after: ["pentest", "review", "docs"], owner: "QA")
                     ]),
-                    PhaseSpec("Staged Rollout", "Canary rollout, staged expansion, GA, and retrospective.", [
-                        TaskSpec("canary", "Canary 5% Rollout & Error Budget Check", 2, after: ["rc"], owner: "SRE"),
-                        TaskSpec("ramp", "50% Staged Production Expansion", 2, after: ["canary"], owner: "SRE"),
-                        TaskSpec("ga", "100% Production GA", 0, milestone: true, after: ["ramp"], owner: "SRE"),
-                        TaskSpec("retro", "Post-Launch Telemetry & Retro", 2, after: ["ga"], owner: "Tech Lead")
+                    PhaseSpec("Canary & Staged Rollout", "Progressive rollout gates with automated error-budget checks.", [
+                        TaskSpec("canary5", "Canary 5% Rollout & Error Budget Check", 2, after: ["rc"], owner: "SRE"),
+                        TaskSpec("ramp25", "25% Regional Rollout & Latency Audit", 2, after: ["canary5"], owner: "SRE"),
+                        TaskSpec("ramp50", "50% Staged Production Expansion", 2, after: ["ramp25"], owner: "SRE")
+                    ]),
+                    PhaseSpec("Production GA & Post-Launch", "Full release, telemetry verification, and retrospective.", [
+                        TaskSpec("ga", "100% Production GA", 0, milestone: true, after: ["ramp50"], owner: "SRE"),
+                        TaskSpec("soak", "72-Hour Telemetry & Crash-Free Audit", 3, after: ["ga"], owner: "SRE"),
+                        TaskSpec("retro", "Post-Launch Retrospective", 1, after: ["soak"], owner: "Tech Lead")
                     ])
                 ]
             )
@@ -194,39 +198,49 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                 cal: cal,
                 calendars: [opsCal],
                 phases: [
-                    PhaseSpec("Discovery & Landing Zone", "Dependency mapping, Terraform VPC, and IAM/KMS provisioning.", [
-                        TaskSpec("inv", "Workload & Dependency Mapping", 3, owner: "Infra"),
-                        TaskSpec("risk", "Risk & Rollback Matrix", 2, after: ["inv"], owner: "SRE"),
-                        TaskSpec("vpc", "IaC VPC & Transit Networking", 6, after: ["inv"], owner: "Infra"),
-                        TaskSpec("iam", "IAM, KMS & Secrets Provisioning", 4, after: ["inv"], owner: "Security"),
-                        TaskSpec("lz_gate", "Landing Zone Ready", 0, milestone: true, after: ["risk", "vpc", "iam"], owner: "Infra")
+                    PhaseSpec("Discovery & Audit", "Workload inventory, dependency graph, and rollback matrix.", [
+                        TaskSpec("inv", "Workload & Dependency Inventory", 3, owner: "Infra"),
+                        TaskSpec("sla", "Downtime Budget & SLA Targets", 2, after: ["inv"], owner: "Platform"),
+                        TaskSpec("risk", "Risk & Rollback Decision Matrix", 2, after: ["sla"], owner: "SRE"),
+                        TaskSpec("disc_gate", "Discovery Sign-Off", 0, milestone: true, after: ["risk"], owner: "Infra")
+                    ]),
+                    PhaseSpec("Landing Zone & Security", "Terraform VPC, transit networking, IAM/KMS, and observability.", [
+                        TaskSpec("vpc", "IaC VPC & Transit Networking", 6, after: ["disc_gate"], owner: "Infra"),
+                        TaskSpec("waf", "Firewall, NAT & WAF Policies", 3, after: ["vpc"], owner: "Security"),
+                        TaskSpec("iam", "IAM, KMS & Secrets Vault Setup", 4, after: ["disc_gate"], owner: "Security"),
+                        TaskSpec("obs", "Logging, Metrics & Alerting Stack", 4, after: ["vpc"], owner: "SRE"),
+                        TaskSpec("lz_gate", "Landing Zone Ready", 0, milestone: true, after: ["waf", "iam", "obs"], owner: "Infra")
                     ]),
                     PhaseSpec("Data & Storage Replication", "Target DB provisioning, CDC pipeline, and parity verification.", [
-                        TaskSpec("db_prov", "Target DB Provisioning & Sizing", 3, after: ["lz_gate"], owner: "Database"),
+                        TaskSpec("db_prov", "Target DB Cluster Provisioning", 3, after: ["lz_gate"], owner: "Database"),
                         TaskSpec("cdc", "Schema Migration & CDC Pipeline", 7, after: ["db_prov"], owner: "Database"),
                         TaskSpec("obj", "Object Storage Sync & Checksums", 5, after: ["lz_gate"], owner: "Database"),
-                        TaskSpec("parity", "Data Parity & Checksum Audit", 3, after: ["cdc", "obj"], owner: "Database"),
+                        TaskSpec("parity", "Data Parity & Integrity Audit", 3, after: ["cdc", "obj"], owner: "Database"),
                         TaskSpec("data_gate", "Data Sync Gate", 0, milestone: true, after: ["parity"], owner: "Database")
                     ]),
                     PhaseSpec("Application & Traffic Prep", "Containerization, DNS TTL lowering, shadow traffic, and load tests.", [
                         TaskSpec("helm", "Containerization & Helm Charts", 6, after: ["lz_gate"], owner: "Platform"),
                         TaskSpec("dns_prep", "DNS TTL Lowering & Ingress Rules", 2, after: ["lz_gate"], owner: "Infra"),
                         TaskSpec("shadow", "Shadow Traffic & Synthetic Probes", 4, after: ["helm", "dns_prep", "data_gate"], owner: "SRE"),
-                        TaskSpec("failover", "Load & Failover Benchmarking", 3, after: ["shadow"], owner: "SRE")
+                        TaskSpec("failover", "Load & Failover Benchmarking", 3, after: ["shadow"], owner: "SRE"),
+                        TaskSpec("app_gate", "Application Readiness Gate", 0, milestone: true, after: ["failover"], owner: "Platform")
                     ]),
                     PhaseSpec("Dress Rehearsal & Go / No-Go", "Dry-run cutover, rollback timing drill, and war-room readiness.", [
-                        TaskSpec("dryrun", "Full Cutover Dry-Run", 2, after: ["failover"], owner: "SRE"),
-                        TaskSpec("drill", "Rollback Drill & Timing Audit", 2, after: ["dryrun"], owner: "SRE"),
+                        TaskSpec("dryrun", "Full Cutover Dry-Run", 2, after: ["app_gate"], owner: "SRE"),
+                        TaskSpec("drill", "Rollback Drill & RTO / RPO Audit", 2, after: ["dryrun"], owner: "SRE"),
                         TaskSpec("roster", "Runbook Freeze & War-Room Roster", 1, after: ["dryrun"], owner: "SRE"),
                         TaskSpec("gonogo", "Go / No-Go Sign-Off", 0, milestone: true, after: ["drill", "roster"], owner: "SRE")
                     ]),
-                    PhaseSpec("Production Cutover Window", "Pinned 24x7 cutover window, DNS switchover, and hypercare.", [
+                    PhaseSpec("Production Cutover Window", "Pinned 24×7 cutover window, DNS switchover, and smoke checks.", [
                         TaskSpec("freeze", "Pre-Cutover Freeze & Final Snapshot", 1, after: ["gonogo"], owner: "Database"),
                         TaskSpec("cutover", "Production Cutover Window", 2, after: ["freeze"], pinnedStart: cutoverStart, owner: "SRE", cal: opsCal.id),
                         TaskSpec("dns_cut", "DNS & Load Balancer Switchover", 1, after: ["cutover"], owner: "Infra", cal: opsCal.id),
-                        TaskSpec("smoke", "Smoke & E2E Production Verification", 1, after: ["dns_cut"], owner: "SRE", cal: opsCal.id),
+                        TaskSpec("smoke", "Smoke & E2E Production Verification", 1, after: ["dns_cut"], owner: "SRE", cal: opsCal.id)
+                    ]),
+                    PhaseSpec("Hypercare & Decommission", "SLO monitoring, legacy teardown, and migration closure.", [
                         TaskSpec("hyper", "48-Hour Hypercare & SLO Monitoring", 3, after: ["smoke"], owner: "SRE", cal: opsCal.id),
-                        TaskSpec("decomm", "Legacy Decommission & Closure", 0, milestone: true, after: ["hyper"], owner: "Infra")
+                        TaskSpec("decomm", "Legacy Environment Decommission", 3, after: ["hyper"], owner: "Infra"),
+                        TaskSpec("closed", "Migration Closure", 0, milestone: true, after: ["decomm"], owner: "Infra")
                     ])
                 ]
             )
@@ -238,36 +252,47 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                 cal: cal,
                 calendars: [],
                 phases: [
-                    PhaseSpec("Regulatory Scope & Technical File", "Standards matrix, risk file, and safety BOM.", [
-                        TaskSpec("matrix", "Target Market & Standards Matrix", 3, owner: "Compliance"),
-                        TaskSpec("risk", "Risk Assessment & Essential Requirements", 4, after: ["matrix"], owner: "Compliance"),
-                        TaskSpec("tcf", "Technical Construction File & Schematics", 5, after: ["matrix"], owner: "Compliance"),
-                        TaskSpec("cbom", "Critical Component & Safety BOM", 4, after: ["matrix"], owner: "EE"),
-                        TaskSpec("scope_gate", "Scope & Technical File Lock", 0, milestone: true, after: ["risk", "tcf", "cbom"], owner: "Compliance")
+                    PhaseSpec("Regulatory Scope & Standards", "Target markets, applicable directives, and risk assessment.", [
+                        TaskSpec("matrix", "Target Market & Country Matrix", 3, owner: "Compliance"),
+                        TaskSpec("stds", "Applicable EMC / RF / Safety Standards", 3, after: ["matrix"], owner: "Compliance"),
+                        TaskSpec("risk", "Risk Assessment & Essential Requirements", 4, after: ["stds"], owner: "Compliance"),
+                        TaskSpec("scope_gate", "Regulatory Scope Lock", 0, milestone: true, after: ["risk"], owner: "Compliance")
+                    ]),
+                    PhaseSpec("Technical Construction File", "Schematics, safety-critical BOM, manuals, and label artwork.", [
+                        TaskSpec("tcf", "Schematics, Block Diagrams & Theory of Op", 5, after: ["scope_gate"], owner: "EE"),
+                        TaskSpec("cbom", "Critical Component & Safety BOM", 4, after: ["scope_gate"], owner: "EE"),
+                        TaskSpec("manuals", "User Manual & Warning Label Drafts", 4, after: ["scope_gate"], owner: "Compliance"),
+                        TaskSpec("file_gate", "Technical File Complete", 0, milestone: true, after: ["tcf", "cbom", "manuals"], owner: "Compliance")
                     ]),
                     PhaseSpec("Internal Pre-Compliance", "EMC pre-scan, ESD/surge, thermal checks, and golden unit build.", [
-                        TaskSpec("emc_pre", "Conducted & Radiated Pre-Scan", 4, after: ["scope_gate"], owner: "Compliance"),
-                        TaskSpec("esd_pre", "ESD, Surge & Immunity Pre-Check", 3, after: ["scope_gate"], owner: "EE"),
-                        TaskSpec("therm", "Thermal & Abnormal Operation Check", 3, after: ["scope_gate"], owner: "ME"),
-                        TaskSpec("golden", "Pre-Test Remediation & Golden Unit Build", 4, after: ["emc_pre", "esd_pre", "therm"], owner: "Compliance"),
+                        TaskSpec("emc_pre", "Conducted & Radiated Pre-Scan", 4, after: ["file_gate"], owner: "Compliance"),
+                        TaskSpec("esd_pre", "ESD, Surge & EFT Immunity Pre-Check", 3, after: ["file_gate"], owner: "EE"),
+                        TaskSpec("therm", "Thermal & Abnormal Fault Testing", 3, after: ["file_gate"], owner: "ME"),
+                        TaskSpec("golden", "Pre-Test Rework & Golden Units (6 Units)", 4, after: ["emc_pre", "esd_pre", "therm"], owner: "Compliance"),
                         TaskSpec("pkg_gate", "Lab Submission Package Ready", 0, milestone: true, after: ["golden"], owner: "Compliance")
                     ]),
-                    PhaseSpec("Accredited Lab Testing", "Booking lag, formal EMC/Safety/Wireless testing, and retest.", [
-                        TaskSpec("queue", "Lab Queue & Sample Shipping", 2, after: ["pkg_gate"], lag: 4, owner: "Test Lab"),
-                        TaskSpec("emc_lab", "Formal EMC / RF Chamber Testing", 5, after: ["queue"], owner: "Test Lab"),
-                        TaskSpec("safety", "Safety, Hipot & Dielectric Testing", 4, after: ["queue"], owner: "Test Lab"),
-                        TaskSpec("sar", "SAR / Wireless Protocol Testing", 4, after: ["queue"], owner: "Test Lab"),
-                        TaskSpec("retest", "Lab Corrective Actions & Retest", 4, after: ["emc_lab", "safety", "sar"], owner: "Compliance")
+                    PhaseSpec("Accredited Lab — EMC & RF", "Booking lag, formal FCC/CE emissions, and RF/SAR chamber tests.", [
+                        TaskSpec("queue", "Lab Queue & Sample Logistics", 2, after: ["pkg_gate"], lag: 4, owner: "Test Lab"),
+                        TaskSpec("emc_lab", "Radiated & Conducted Emissions (FCC / CE)", 5, after: ["queue"], owner: "Test Lab"),
+                        TaskSpec("rf_lab", "RF Spurious, Bandwidth & SAR Testing", 4, after: ["queue"], owner: "Test Lab"),
+                        TaskSpec("emc_gate", "EMC / RF Report Pass", 0, milestone: true, after: ["emc_lab", "rf_lab"], owner: "Test Lab")
                     ]),
-                    PhaseSpec("Chemical & Environmental Declarations", "RoHS/REACH material screening, UN38.3, and WEEE compliance.", [
-                        TaskSpec("rohs", "RoHS / REACH Lab Material Screening", 6, after: ["scope_gate"], owner: "Test Lab"),
-                        TaskSpec("un383", "Battery Transport UN38.3 & MSDS", 5, after: ["scope_gate"], owner: "Compliance"),
-                        TaskSpec("weee", "Recycling & WEEE Packaging Compliance", 3, after: ["scope_gate"], owner: "Legal")
+                    PhaseSpec("Accredited Lab — Safety & Reliability", "Hipot/dielectric, mechanical drop, and corrective retest.", [
+                        TaskSpec("safety", "Hipot, Dielectric & Creepage / Clearance", 4, after: ["queue"], owner: "Test Lab"),
+                        TaskSpec("mech_lab", "Abnormal Operation & Mechanical Drop", 3, after: ["queue"], owner: "Test Lab"),
+                        TaskSpec("retest", "Corrective Actions & Lab Retest", 4, after: ["emc_gate", "safety", "mech_lab"], owner: "Compliance"),
+                        TaskSpec("safety_gate", "Safety Lab Report Pass", 0, milestone: true, after: ["retest"], owner: "Test Lab")
                     ]),
-                    PhaseSpec("Filing & Market Access", "Test report audit, TCB filing, DoC, and final certification.", [
-                        TaskSpec("audit", "Accredited Test Report Audit", 3, after: ["retest", "rohs"], owner: "Legal"),
+                    PhaseSpec("Chemical & Transport Declarations", "RoHS/REACH material screening, UN38.3, and WEEE compliance.", [
+                        TaskSpec("rohs", "RoHS / REACH Lab Material Screening", 6, after: ["file_gate"], owner: "Test Lab"),
+                        TaskSpec("un383", "Battery Transport UN38.3 & MSDS", 5, after: ["file_gate"], owner: "Compliance"),
+                        TaskSpec("prop65", "Conflict Minerals & Prop 65 Review", 3, after: ["file_gate"], owner: "Legal"),
+                        TaskSpec("weee", "WEEE & Packaging Recycling Compliance", 3, after: ["file_gate"], owner: "Legal")
+                    ]),
+                    PhaseSpec("TCB Filing & Market Access", "Test report audit, TCB filing, DoC, and final certification.", [
+                        TaskSpec("audit", "Accredited Test Report Audit", 3, after: ["safety_gate", "rohs"], owner: "Legal"),
                         TaskSpec("tcb", "TCB / Notified Body Filing", 4, after: ["audit", "un383"], owner: "Legal"),
-                        TaskSpec("doc", "Declaration of Conformity & Regulatory Labels", 3, after: ["audit", "weee"], owner: "Compliance"),
+                        TaskSpec("doc", "Declaration of Conformity & E-Labels", 3, after: ["audit", "prop65", "weee"], owner: "Compliance"),
                         TaskSpec("cert", "Certification Granted", 0, milestone: true, after: ["tcb", "doc"], owner: "Legal")
                     ])
                 ]
