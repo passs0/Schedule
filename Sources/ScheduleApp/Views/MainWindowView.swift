@@ -250,6 +250,7 @@ struct MainWindowView: View {
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
+                .menuIndicator(.hidden)
                 .help("Export Schedule (Excel, Numbers, Microsoft Project XML)")
             }
 
