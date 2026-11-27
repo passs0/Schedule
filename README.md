@@ -21,26 +21,28 @@
 
 ## What it does
 
-- **Pages-style Welcome & Templates** — Launch straight into a compact Welcome screen to open recent files, import task lists, or click **New Document… (`⌘N`)** to start from **Blank**, **Hardware Product Launch**, **Software & Firmware Release**, **System Cutover & Migration**, or **Compliance & Lab Certification**.
+- **Welcome & Templates** — Launch into a compact Welcome window to open recent projects, import existing files, or click **New Document… (`⌘N`)** to start from **Blank**, **Hardware Product Launch**, **Software & Firmware Release**, **System Cutover & Migration**, or **Compliance & Lab Certification**.
+- **Forward & backward scheduling** — Schedule forward from a project start date or work backwards from a target finish date to see when each task must begin.
 - **Plain-English dependencies** — Express relationships naturally (like `After Architecture Freeze` or `2d after Schematic Capture`) with full Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish, and lag support.
-- **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with synchronized Split View scrolling, Days/Weeks/Months/Quarters zoom, Critical Path highlighting, and full `⌘Z` / `⇧⌘Z` Undo/Redo.
-- **Slideshow-ready Gantt export** — Export the full Gantt timeline as a lossless vector **PDF** (`.pdf`) for Keynote or a `@2x` **High-DPI PNG** (`.png`) for PowerPoint, Google Slides, and the web.
-- **Working calendars & holidays** — Customize working days per task, team, or project and import public or team holidays from Apple Calendar or `.ics` files.
-- **Project versions & diff** — Save schedule snapshots and compare timeline, duration, and dependency changes across revisions.
-- **Microsoft Project `.mpp` / `.xml` & spreadsheet import** — Directly import binary Microsoft Project `.mpp` files (MPP14+ / Project 2010 and later) and import/export MSPDI `.xml` files (preserving hierarchy, dates, durations, milestones, completion percentages, and dependencies), or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
-- **Formula-driven Excel & Numbers export** — Export live-formula `.xlsx` workbooks (including summary rollups and dependency sheets) or convert straight into native `.numbers` documents via Apple Numbers.
+- **List, Split, and Gantt views** — Edit hierarchical WBS task lists alongside an interactive timeline with synchronized Split View scrolling, native toolbar search, Days/Weeks/Months/Quarters zoom, Critical Path highlighting, and full `⌘Z` / `⇧⌘Z` Undo/Redo.
+- **Inline baselines & per-task deadlines** — Save project snapshots, compare revisions side-by-side, overlay ghost baseline bars directly on the Gantt chart, and set optional per-task deadlines with automatic late-task warnings.
+- **Working calendars & holidays** — Customize working days per task, team, or project and import regional or team holidays from Apple Calendar or `.ics` feeds.
+- **Microsoft Project `.mpp` / `.xml` & spreadsheet import** — Directly import binary Microsoft Project `.mpp` files (MPP14+ / Project 2010 and later) and import/export MSPDI `.xml` files, or import task lists from `.xlsx`, `.csv`, and `.tsv` files with hierarchy preserved.
+- **Presentation & spreadsheet export** — Export lossless vector **PDF** (`.pdf`) for Keynote, `@2x` **PNG** (`.png`) for slides and the web, live-formula **Excel** (`.xlsx`) workbooks, or native **Apple Numbers** (`.numbers`) documents.
+- **Bilingual interface** — Full English and Traditional Chinese (Taiwan) localization, switchable in Settings (`⌘,`).
 
 ## How it compares
 
 | Capability | Schedule | Microsoft Project | OmniPlan | Merlin Project | GanttProject |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Native macOS SwiftUI app** | **Yes** (macOS 15+) | No (Windows / Web) | Yes (AppKit) | Yes (AppKit) | No (Java) |
+| **Forward & backward scheduling** | **Yes** | **Yes** | **Yes** | **Yes** | No |
 | **Plain-English dependencies** | **Yes** (`2d after X`) | No (IDs / codes) | Partial | Partial | No (IDs / dialogs) |
-| **Critical Path & `.ics` calendars** | **Yes** | Yes | Yes | Yes | Partial |
-| **Version snapshots & diff** | **Yes** | Baselines | Baselines | Snapshots | No |
+| **Critical Path & `.ics` calendars** | **Yes** | **Yes** | **Yes** | **Yes** | Partial |
+| **Inline baselines, deadlines & diff** | **Yes** | **Yes** | **Yes** | **Yes** | Partial |
 | **Formula-driven `.xlsx` / `.numbers`** | **Yes** | Static export | No formulas | No formulas | CSV / static |
-| **MS Project `.xml` (MSPDI) interop** | **Yes** | Yes | Pro only | Yes | Yes |
-| **Direct binary `.mpp` import** | **Yes** (MPP14+) | **Yes** | **Pro only** | **Yes** | Partial |
+| **MS Project `.xml` (MSPDI) interop** | **Yes** | **Yes** | Pro only | **Yes** | **Yes** |
+| **Direct binary `.mpp` import** | **Yes** (MPP14+) | **Yes** | Pro only | **Yes** | Partial |
 | **Resource leveling & cost tracking** | No | **Yes** | **Yes** | **Yes** | Basic |
 | **Price** | **Free / Open source** | Subscription | Paid | Subscription | Free / Open source |
 
