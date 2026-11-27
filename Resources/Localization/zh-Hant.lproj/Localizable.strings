@@ -194,6 +194,15 @@
 "Works backwards from the target finish date to show when each task must start." = "從目標完成日逆推，計算各項任務最晚必須開始的日期。";
 "Schedules tasks forward from the project start date." = "從專案開始日期順向推算各項任務的排程。";
 
+/* Deadlines & Inline Baseline */
+"Deadline" = "截止日期";
+"Set Deadline" = "設定截止日";
+"Clear Deadline" = "清除截止日";
+"Past deadline by %lldd" = "已超過截止日 %lld 天";
+"Baseline" = "基準線";
+"None" = "無";
+"Compare against a saved snapshot inline on the Gantt chart" = "直接在甘特圖上顯示與已儲存快照的比較基準線";
+
 /* Alerts */
 "OK" = "好";
 "Circular Dependency" = "循環相依";

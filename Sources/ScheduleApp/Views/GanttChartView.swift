@@ -121,6 +121,47 @@ struct GanttChartView: View {
                 .controlSize(.small)
                 .font(.callout)
 
+            if !viewModel.document.versions.isEmpty {
+                Divider().frame(height: 14)
+                Menu {
+                    Button {
+                        viewModel.baselineVersionID = nil
+                    } label: {
+                        HStack {
+                            Text("None")
+                            if viewModel.baselineVersionID == nil {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    Divider()
+                    ForEach(viewModel.document.versions) { version in
+                        Button {
+                            viewModel.baselineVersionID = version.id
+                        } label: {
+                            HStack {
+                                Text(version.name)
+                                if viewModel.baselineVersionID == version.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    let activeName = viewModel.document.versions.first(where: { $0.id == viewModel.baselineVersionID })?.name
+                    HStack(spacing: 4) {
+                        Image(systemName: "rectangle.stack")
+                            .font(.caption2)
+                        Text(activeName.map { "Baseline: \($0)" } ?? "Baseline")
+                            .font(.callout)
+                    }
+                    .foregroundStyle(activeName != nil ? ScheduleTheme.accent : .secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Compare against a saved snapshot inline on the Gantt chart")
+            }
+
             Spacer()
 
             HStack(spacing: 4) {
@@ -249,6 +290,7 @@ struct GanttChartView: View {
                 workingCalendar: viewModel.document.workingCalendar,
                 selectedTaskID: viewModel.selectedTaskID,
                 showCriticalPath: viewModel.showCriticalPath,
+                baselineTasksByID: viewModel.baselineTasksByID,
                 dragState: dragState
             )
         }
@@ -266,6 +308,7 @@ struct GanttChartView: View {
         workingCalendar: WorkingCalendar,
         selectedTaskID: UUID?,
         showCriticalPath: Bool,
+        baselineTasksByID: [UUID: ScheduleTask] = [:],
         dragState: BarDragState? = nil
     ) {
         let today = CalendarDay.today
@@ -351,6 +394,50 @@ struct GanttChartView: View {
             let rect = barRect(for: task, rowIndex: idx, timelineStart: start, dayWidth: dayWidth, rowHeight: rowHeight, workingCalendar: workingCalendar, dragState: dragState)
             let isCritical = showCriticalPath && task.isCritical
             let isSelected = selectedTaskID == task.id
+
+            // Inline baseline ghost bar / diamond from selected snapshot
+            if let baseTask = baselineTasksByID[task.id] {
+                let baseRect = barRect(for: baseTask, rowIndex: idx, timelineStart: start, dayWidth: dayWidth, rowHeight: rowHeight, workingCalendar: workingCalendar)
+                if baseTask.isMilestone {
+                    let bx = baseRect.midX
+                    let by = CGFloat(idx + 1) * rowHeight - 5
+                    let br: CGFloat = 3.5
+                    var bd = Path()
+                    bd.move(to: CGPoint(x: bx, y: by - br))
+                    bd.addLine(to: CGPoint(x: bx + br, y: by))
+                    bd.addLine(to: CGPoint(x: bx, y: by + br))
+                    bd.addLine(to: CGPoint(x: bx - br, y: by))
+                    bd.closeSubpath()
+                    context.stroke(bd, with: .color(Color.secondary.opacity(0.65)), lineWidth: 1.0)
+                } else {
+                    let ghost = CGRect(x: baseRect.minX, y: baseRect.maxY + 2, width: baseRect.width, height: 3)
+                    context.fill(Path(roundedRect: ghost, cornerRadius: 1.5), with: .color(Color.secondary.opacity(0.45)))
+                }
+            }
+
+            // Optional per-task deadline marker
+            if let deadline = task.deadline {
+                let dlOffset = start.calendarDays(until: deadline)
+                if dlOffset >= 0 && dlOffset < totalDays {
+                    let dlX = (CGFloat(dlOffset) + 1.0) * dayWidth
+                    let rowTop = CGFloat(idx) * rowHeight + 3
+                    let rowBottom = CGFloat(idx + 1) * rowHeight - 3
+                    let missed = task.endDate > deadline
+                    let dlColor: Color = missed ? .red : Color.orange.opacity(0.85)
+
+                    var dlLine = Path()
+                    dlLine.move(to: CGPoint(x: dlX, y: rowTop))
+                    dlLine.addLine(to: CGPoint(x: dlX, y: rowBottom))
+                    context.stroke(dlLine, with: .color(dlColor.opacity(0.75)), style: StrokeStyle(lineWidth: 1.2, dash: [2, 2]))
+
+                    var flag = Path()
+                    flag.move(to: CGPoint(x: dlX, y: rowTop))
+                    flag.addLine(to: CGPoint(x: dlX - 5, y: rowTop + 3))
+                    flag.addLine(to: CGPoint(x: dlX, y: rowTop + 6))
+                    flag.closeSubpath()
+                    context.fill(flag, with: .color(dlColor))
+                }
+            }
 
             if task.isMilestone {
                 let center = CGPoint(x: rect.midX, y: rect.midY)

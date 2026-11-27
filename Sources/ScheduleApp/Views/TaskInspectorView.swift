@@ -176,6 +176,48 @@ struct TaskInspectorView: View {
                             }
                         }
                     }
+
+                    if let deadline = task.deadline {
+                        HStack {
+                            DatePicker(
+                                "Deadline",
+                                selection: Binding(
+                                    get: { deadline.toDate() },
+                                    set: { newDate in
+                                        viewModel.updateTask(task.id, actionName: "Set Deadline") { t, _ in
+                                            t.deadline = CalendarDay(date: newDate, calendar: .current)
+                                        }
+                                    }
+                                ),
+                                displayedComponents: .date
+                            )
+                            Button {
+                                viewModel.updateTask(task.id, actionName: "Clear Deadline") { t, _ in
+                                    t.deadline = nil
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Clear Deadline")
+                        }
+                        if task.endDate > deadline {
+                            let lateDays = max(1, deadline.calendarDays(until: task.endDate))
+                            Label("Past deadline by \(lateDays)d", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    } else {
+                        LabeledContent("Deadline") {
+                            Button("Set Deadline") {
+                                viewModel.updateTask(task.id, actionName: "Set Deadline") { t, _ in
+                                    t.deadline = t.endDate
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+                    }
                 }
 
                 Section {
@@ -283,6 +325,48 @@ struct TaskInspectorView: View {
                                 Text(cal.owner.isEmpty ? cal.name : "\(cal.name) (\(cal.owner))")
                                     .tag(Optional(cal.id))
                             }
+                        }
+                    }
+
+                    if let deadline = task.deadline {
+                        HStack {
+                            DatePicker(
+                                "Deadline",
+                                selection: Binding(
+                                    get: { deadline.toDate() },
+                                    set: { newDate in
+                                        viewModel.updateTask(task.id, actionName: "Set Deadline") { t, _ in
+                                            t.deadline = CalendarDay(date: newDate, calendar: .current)
+                                        }
+                                    }
+                                ),
+                                displayedComponents: .date
+                            )
+                            Button {
+                                viewModel.updateTask(task.id, actionName: "Clear Deadline") { t, _ in
+                                    t.deadline = nil
+                                }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Clear Deadline")
+                        }
+                        if task.endDate > deadline {
+                            let lateDays = max(1, deadline.calendarDays(until: task.endDate))
+                            Label("Past deadline by \(lateDays)d", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    } else {
+                        LabeledContent("Deadline") {
+                            Button("Set Deadline") {
+                                viewModel.updateTask(task.id, actionName: "Set Deadline") { t, _ in
+                                    t.deadline = t.endDate
+                                }
+                            }
+                            .controlSize(.small)
                         }
                     }
                 }

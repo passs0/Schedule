@@ -158,6 +158,7 @@ public final class ProjectViewModel {
     public var timeScale: GanttTimeScale = .days
     public var dayWidth: CGFloat = 34
     public var showCriticalPath: Bool = false
+    public var baselineVersionID: UUID?
     public var isInspectorPresented: Bool = false
     public var isComparingVersions: Bool = false
     public var cycleWarningMessage: String?
@@ -224,6 +225,14 @@ public final class ProjectViewModel {
             ))
         }
         visibleRows = rows
+    }
+
+    public var baselineTasksByID: [UUID: ScheduleTask] {
+        guard let vid = baselineVersionID,
+              let version = document.versions.first(where: { $0.id == vid }) else {
+            return [:]
+        }
+        return Dictionary(uniqueKeysWithValues: version.tasks.map { ($0.id, $0) })
     }
 
     public var knownDRIs: [String] {

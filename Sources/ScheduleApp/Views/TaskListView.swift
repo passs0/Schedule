@@ -317,11 +317,23 @@ struct TaskListView: View {
                 }
 
             if showExtendedColumns {
-                Text(Self.shortDateFormatter.string(from: task.endDate.toDate()))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
-                    .frame(width: 68, alignment: .leading)
-                    .padding(.horizontal, 6)
+                HStack(spacing: 4) {
+                    Text(Self.shortDateFormatter.string(from: task.endDate.toDate()))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(
+                            isSelected
+                                ? Color.white.opacity(0.9)
+                                : (task.deadline.map { task.endDate > $0 } == true ? Color.red : Color.secondary)
+                        )
+                    if let deadline = task.deadline, task.endDate > deadline {
+                        Image(systemName: "flag.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(isSelected ? Color.white : Color.red)
+                            .help("Missed deadline: \(Self.shortDateFormatter.string(from: deadline.toDate()))")
+                    }
+                }
+                .frame(width: 68, alignment: .leading)
+                .padding(.horizontal, 6)
             }
 
             Group {

@@ -173,7 +173,8 @@ private struct GanttSlideExportView: View {
                             timeScale: viewModel.timeScale,
                             workingCalendar: viewModel.document.workingCalendar,
                             selectedTaskID: nil,
-                            showCriticalPath: viewModel.showCriticalPath
+                            showCriticalPath: viewModel.showCriticalPath,
+                            baselineTasksByID: viewModel.baselineTasksByID
                         )
                     }
                     .frame(width: timelineW, height: bodyH)

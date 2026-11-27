@@ -25,6 +25,8 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
     public var calendarID: UUID?
     /// Optional Directly Responsible Individual (DRI) assigned to this task.
     public var dri: String?
+    /// Optional fixed external deadline date. Unlike `endDate`, this does not shift automatically.
+    public var deadline: CalendarDay?
 
     // Computed by `SchedulingEngine`:
     public var isCritical: Bool
@@ -46,6 +48,7 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
         isManuallyScheduled: Bool = false,
         calendarID: UUID? = nil,
         dri: String? = nil,
+        deadline: CalendarDay? = nil,
         isCritical: Bool = false,
         totalSlackDays: Int = 0,
         calendar: WorkingCalendar = .standard
@@ -71,6 +74,7 @@ public struct ScheduleTask: Codable, Identifiable, Equatable, Hashable, Sendable
         self.isManuallyScheduled = isManuallyScheduled
         self.calendarID = calendarID
         self.dri = dri
+        self.deadline = deadline
         self.isCritical = isCritical
         self.totalSlackDays = totalSlackDays
     }
