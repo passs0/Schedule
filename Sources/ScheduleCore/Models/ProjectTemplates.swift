@@ -84,10 +84,10 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                 cal: cal,
                 calendars: [cmCal],
                 phases: [
-                    PhaseSpec("Architecture & Concept", "System requirements, block diagram, and architecture freeze.", [
+                    PhaseSpec("Architecture & Concept", "System requirements, block diagram, and client architecture sign-off.", [
                         TaskSpec("prd", "Product Requirements & Target Spec", 4, owner: "Systems"),
                         TaskSpec("arch", "System Architecture & Block Diagram", 5, after: ["prd"], owner: "Systems"),
-                        TaskSpec("arch_freeze", "Architecture Freeze", 0, milestone: true, after: ["arch"], owner: "Systems")
+                        TaskSpec("arch_freeze", "Client Architecture Sign-Off", 0, milestone: true, after: ["arch"], owner: "Client")
                     ]),
                     PhaseSpec("Electrical & PCB Layout", "Schematic capture, long-lead BOM, impedance layout, and EVT PCBA.", [
                         TaskSpec("sch", "Schematic Capture & Power Tree", 7, after: ["arch_freeze"], owner: "EE"),
@@ -106,13 +106,13 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("evt_asm", "EVT Unit Assembly (30 Units)", 3, after: ["evt_pcba", "cnc"], owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("bringup", "Board Bring-Up & Firmware Integration", 5, after: ["evt_asm"], owner: "Firmware"),
                         TaskSpec("evt_rf", "EVT Functional & RF Bench Validation", 5, after: ["bringup"], owner: "EE"),
-                        TaskSpec("evt_gate", "EVT Exit Gate", 0, milestone: true, after: ["evt_rf"], owner: "Systems")
+                        TaskSpec("evt_gate", "Client EVT Review & Approval", 0, milestone: true, after: ["evt_rf"], owner: "Client")
                     ]),
                     PhaseSpec("DVT — Design Validation", "Hard tooling T1/T2, Rev B PCBA, and 100-unit DVT reliability.", [
                         TaskSpec("mold", "Hard Tooling & Injection Mold (T1 / T2)", 12, after: ["evt_gate"], owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("revb", "PCB Layout Rev B & PCBA (100 Units)", 10, after: ["evt_gate"], owner: "Factory CM", cal: cmCal.id),
                         TaskSpec("dvt_build", "DVT Pilot Build & Reliability Testing", 10, after: ["mold", "revb"], owner: "Factory CM", cal: cmCal.id),
-                        TaskSpec("dvt_gate", "DVT Exit Gate", 0, milestone: true, after: ["dvt_build"], owner: "Systems")
+                        TaskSpec("dvt_gate", "Client DVT Sign-Off", 0, milestone: true, after: ["dvt_build"], owner: "Client")
                     ]),
                     PhaseSpec("Compliance & Certification", "EMC/RF chamber testing, FCC/CE/UL, and RoHS/REACH declarations.", [
                         TaskSpec("prescan", "Pre-Compliance EMC / RF Chamber Scan", 5, after: ["evt_gate"], owner: "Compliance"),
@@ -120,10 +120,10 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("rohs", "RoHS / REACH Material Declarations", 6, after: ["dvt_gate"], owner: "Compliance"),
                         TaskSpec("reg_gate", "Regulatory Certification Granted", 0, milestone: true, after: ["lab_cert", "rohs"], owner: "Compliance")
                     ]),
-                    PhaseSpec("PVT & Mass Production", "Packaging, PVT line qualification, golden sample, and MP ramp.", [
+                    PhaseSpec("PVT & Mass Production", "Packaging, PVT line qualification, client golden sample approval, and MP.", [
                         TaskSpec("pkg", "Packaging, Regulatory Labels & Inserts", 7, after: ["dvt_gate"], owner: "ME"),
                         TaskSpec("pvt", "PVT Line Trial & Yield Qualification", 7, after: ["dvt_gate", "pkg"], lag: 2, owner: "Factory CM", cal: cmCal.id),
-                        TaskSpec("golden", "Golden Sample Sign-Off", 3, after: ["pvt", "reg_gate"], owner: "Systems"),
+                        TaskSpec("golden", "Client Golden Sample Approval", 3, after: ["pvt", "reg_gate"], owner: "Client"),
                         TaskSpec("mp", "Mass Production Ramp (MP)", 0, milestone: true, after: ["golden"], owner: "Factory CM", cal: cmCal.id)
                     ])
                 ]
@@ -141,7 +141,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("api", "API Schema & Contract Spec", 4, after: ["prd"], owner: "Backend"),
                         TaskSpec("model", "Data Model & Migration Plan", 3, after: ["prd"], owner: "Backend"),
                         TaskSpec("threat", "Security Threat Model", 2, after: ["api"], owner: "Security"),
-                        TaskSpec("arch_gate", "Architecture Freeze", 0, milestone: true, after: ["api", "model", "threat"], owner: "Tech Lead")
+                        TaskSpec("arch_gate", "Client Scope & Architecture Sign-Off", 0, milestone: true, after: ["api", "model", "threat"], owner: "Client")
                     ]),
                     PhaseSpec("Core Backend & Platform", "Auth, domain APIs, telemetry pipeline, and CI/CD.", [
                         TaskSpec("auth", "Service Scaffolding & Auth", 4, after: ["arch_gate"], owner: "Backend"),
@@ -155,7 +155,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("flows", "Core Workflows & State Sync", 7, after: ["shell"], owner: "Client UI"),
                         TaskSpec("offline", "Offline Cache & Error Recovery", 4, after: ["flows"], owner: "Client UI"),
                         TaskSpec("l10n", "Accessibility & Localization", 3, after: ["flows"], owner: "Client UI"),
-                        TaskSpec("fe_gate", "Client Feature Complete", 0, milestone: true, after: ["offline", "l10n", "be_gate"], owner: "Client UI")
+                        TaskSpec("fe_gate", "Client Demo & Feature Sign-Off", 0, milestone: true, after: ["offline", "l10n", "be_gate"], owner: "Client")
                     ]),
                     PhaseSpec("Integration & Hardening", "E2E testing, load benchmarking, profiling, and bug bash.", [
                         TaskSpec("e2e", "End-to-End Integration Suite", 5, after: ["fe_gate"], owner: "QA"),
@@ -168,7 +168,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("pentest", "Pen-Test & Dependency Audit", 4, after: ["freeze"], owner: "Security"),
                         TaskSpec("review", "Privacy & App Review Compliance", 3, after: ["freeze"], owner: "QA"),
                         TaskSpec("docs", "Release Notes & On-Call Runbooks", 2, after: ["freeze"], owner: "SRE"),
-                        TaskSpec("rc", "Release Candidate Sign-Off", 0, milestone: true, after: ["pentest", "review", "docs"], owner: "QA")
+                        TaskSpec("rc", "Client UAT & Release Approval", 0, milestone: true, after: ["pentest", "review", "docs"], owner: "Client")
                     ]),
                     PhaseSpec("Canary & Staged Rollout", "Progressive rollout gates with automated error-budget checks.", [
                         TaskSpec("canary5", "Canary 5% Rollout & Error Budget Check", 2, after: ["rc"], owner: "SRE"),
@@ -178,7 +178,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                     PhaseSpec("Production GA & Post-Launch", "Full release, telemetry verification, and retrospective.", [
                         TaskSpec("ga", "100% Production GA", 0, milestone: true, after: ["ramp50"], owner: "SRE"),
                         TaskSpec("soak", "72-Hour Telemetry & Crash-Free Audit", 3, after: ["ga"], owner: "SRE"),
-                        TaskSpec("retro", "Post-Launch Retrospective", 1, after: ["soak"], owner: "Tech Lead")
+                        TaskSpec("retro", "Client Handover & Final Sign-Off", 1, after: ["soak"], owner: "Client")
                     ])
                 ]
             )
@@ -202,7 +202,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("inv", "Workload & Dependency Inventory", 3, owner: "Infra"),
                         TaskSpec("sla", "Downtime Budget & SLA Targets", 2, after: ["inv"], owner: "Platform"),
                         TaskSpec("risk", "Risk & Rollback Decision Matrix", 2, after: ["sla"], owner: "SRE"),
-                        TaskSpec("disc_gate", "Discovery Sign-Off", 0, milestone: true, after: ["risk"], owner: "Infra")
+                        TaskSpec("disc_gate", "Client Scope & Downtime Approval", 0, milestone: true, after: ["risk"], owner: "Client")
                     ]),
                     PhaseSpec("Landing Zone & Security", "Terraform VPC, transit networking, IAM/KMS, and observability.", [
                         TaskSpec("vpc", "IaC VPC & Transit Networking", 6, after: ["disc_gate"], owner: "Infra"),
@@ -229,7 +229,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("dryrun", "Full Cutover Dry-Run", 2, after: ["app_gate"], owner: "SRE"),
                         TaskSpec("drill", "Rollback Drill & RTO / RPO Audit", 2, after: ["dryrun"], owner: "SRE"),
                         TaskSpec("roster", "Runbook Freeze & War-Room Roster", 1, after: ["dryrun"], owner: "SRE"),
-                        TaskSpec("gonogo", "Go / No-Go Sign-Off", 0, milestone: true, after: ["drill", "roster"], owner: "SRE")
+                        TaskSpec("gonogo", "Client Go / No-Go Sign-Off", 0, milestone: true, after: ["drill", "roster"], owner: "Client")
                     ]),
                     PhaseSpec("Production Cutover Window", "Pinned 24×7 cutover window, DNS switchover, and smoke checks.", [
                         TaskSpec("freeze", "Pre-Cutover Freeze & Final Snapshot", 1, after: ["gonogo"], owner: "Database"),
@@ -240,7 +240,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                     PhaseSpec("Hypercare & Decommission", "SLO monitoring, legacy teardown, and migration closure.", [
                         TaskSpec("hyper", "48-Hour Hypercare & SLO Monitoring", 3, after: ["smoke"], owner: "SRE", cal: opsCal.id),
                         TaskSpec("decomm", "Legacy Environment Decommission", 3, after: ["hyper"], owner: "Infra"),
-                        TaskSpec("closed", "Migration Closure", 0, milestone: true, after: ["decomm"], owner: "Infra")
+                        TaskSpec("closed", "Client Handover & Migration Sign-Off", 0, milestone: true, after: ["decomm"], owner: "Client")
                     ])
                 ]
             )
@@ -256,12 +256,12 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("matrix", "Target Market & Country Matrix", 3, owner: "Compliance"),
                         TaskSpec("stds", "Applicable EMC / RF / Safety Standards", 3, after: ["matrix"], owner: "Compliance"),
                         TaskSpec("risk", "Risk Assessment & Essential Requirements", 4, after: ["stds"], owner: "Compliance"),
-                        TaskSpec("scope_gate", "Regulatory Scope Lock", 0, milestone: true, after: ["risk"], owner: "Compliance")
+                        TaskSpec("scope_gate", "Client Market & Scope Approval", 0, milestone: true, after: ["risk"], owner: "Client")
                     ]),
-                    PhaseSpec("Technical Construction File", "Schematics, safety-critical BOM, manuals, and label artwork.", [
+                    PhaseSpec("Technical Construction File", "Schematics, safety-critical BOM, manuals, and client label approval.", [
                         TaskSpec("tcf", "Schematics, Block Diagrams & Theory of Op", 5, after: ["scope_gate"], owner: "EE"),
                         TaskSpec("cbom", "Critical Component & Safety BOM", 4, after: ["scope_gate"], owner: "EE"),
-                        TaskSpec("manuals", "User Manual & Warning Label Drafts", 4, after: ["scope_gate"], owner: "Compliance"),
+                        TaskSpec("manuals", "User Manual & Warning Label Approval", 4, after: ["scope_gate"], owner: "Client"),
                         TaskSpec("file_gate", "Technical File Complete", 0, milestone: true, after: ["tcf", "cbom", "manuals"], owner: "Compliance")
                     ]),
                     PhaseSpec("Internal Pre-Compliance", "EMC pre-scan, ESD/surge, thermal checks, and golden unit build.", [
@@ -293,7 +293,7 @@ public enum ProjectTemplate: String, CaseIterable, Identifiable, Sendable {
                         TaskSpec("audit", "Accredited Test Report Audit", 3, after: ["safety_gate", "rohs"], owner: "Legal"),
                         TaskSpec("tcb", "TCB / Notified Body Filing", 4, after: ["audit", "un383"], owner: "Legal"),
                         TaskSpec("doc", "Declaration of Conformity & E-Labels", 3, after: ["audit", "prop65", "weee"], owner: "Compliance"),
-                        TaskSpec("cert", "Certification Granted", 0, milestone: true, after: ["tcb", "doc"], owner: "Legal")
+                        TaskSpec("cert", "Client Final Release & Cert Sign-Off", 0, milestone: true, after: ["tcb", "doc"], owner: "Client")
                     ])
                 ]
             )
