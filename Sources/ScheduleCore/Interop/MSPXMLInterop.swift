@@ -230,12 +230,16 @@ public enum MSPXMLInterop {
     }
 
     private static func xmlEscape(_ s: String) -> String {
-        s.replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
+        ScheduleCore.xmlEscape(s)
     }
+}
+
+internal func xmlEscape(_ s: String) -> String {
+    s.replacingOccurrences(of: "&", with: "&amp;")
+        .replacingOccurrences(of: "<", with: "&lt;")
+        .replacingOccurrences(of: ">", with: "&gt;")
+        .replacingOccurrences(of: "\"", with: "&quot;")
+        .replacingOccurrences(of: "'", with: "&apos;")
 }
 
 private final class MSPXMLParserDelegate: NSObject, XMLParserDelegate {

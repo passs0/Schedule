@@ -8,11 +8,11 @@ CONTENTS_DIR="$APP_BUNDLE/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
-echo "Building ${APP_NAME} (release)..."
+echo "Building ${APP_NAME} (release, size-optimized, dead-stripped)..."
 cd "$ROOT_DIR"
-swift build -c release
+swift build -c release -Xswiftc -Osize -Xlinker -dead_strip
 
-BIN_PATH="$(swift build -c release --show-bin-path)/${APP_NAME}"
+BIN_PATH="$(swift build -c release -Xswiftc -Osize -Xlinker -dead_strip --show-bin-path)/${APP_NAME}"
 if [[ ! -f "$BIN_PATH" ]]; then
     echo "Error: Binary not found at $BIN_PATH"
     exit 1
@@ -22,6 +22,7 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 cp "$BIN_PATH" "$MACOS_DIR/${APP_NAME}"
+strip -rSTx "$MACOS_DIR/${APP_NAME}"
 cp "$ROOT_DIR/Resources/Info.plist" "$CONTENTS_DIR/Info.plist"
 printf "APPL????" > "$CONTENTS_DIR/PkgInfo"
 
