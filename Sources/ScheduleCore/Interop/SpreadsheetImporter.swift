@@ -244,6 +244,15 @@ public enum SpreadsheetImporter {
         return ColumnMapping(headerRowIndex: nil, titleCol: 0)
     }
 
+    private static let fallbackDateFormatters: [DateFormatter] = {
+        ["MM/dd/yyyy", "M/d/yyyy", "yyyy/MM/dd", "MMM d, yyyy", "d MMM yyyy"].map { fmt in
+            let df = DateFormatter()
+            df.locale = Locale(identifier: "en_US_POSIX")
+            df.dateFormat = fmt
+            return df
+        }
+    }()
+
     private static func parseDate(_ raw: String, epoch: CalendarDay) -> CalendarDay? {
         let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.isEmpty { return nil }
@@ -261,11 +270,7 @@ public enum SpreadsheetImporter {
             }
         }
 
-        let formats = ["MM/dd/yyyy", "M/d/yyyy", "yyyy/MM/dd", "MMM d, yyyy", "d MMM yyyy"]
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        for fmt in formats {
-            df.dateFormat = fmt
+        for df in fallbackDateFormatters {
             if let date = df.date(from: s) {
                 return CalendarDay(date: date, calendar: .current)
             }
